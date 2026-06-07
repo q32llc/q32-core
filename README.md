@@ -39,7 +39,7 @@ pnpm build
 
 ## Release
 
-Publishing is handled by the `Release` GitHub Actions workflow when a GitHub release is published. Configure an npm automation token as the repository secret `NPM_TOKEN` before the first release.
+Publishing is handled by the `Release` GitHub Actions workflow when a GitHub release is published. npm trusted publishing is configured for `q32llc/q32-core` using `.github/workflows/release.yml`, so the workflow publishes with provenance through GitHub OIDC.
 
 ## Modules
 

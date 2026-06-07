@@ -19,8 +19,8 @@ Objective: working Q32 core libraries, with the common libraries discussed in th
 
 | Requirement | Status |
 | --- | --- |
-| npm package published | Not complete. Local `npm whoami` returns `E401`, and `@q32/core` does not exist on npm yet. |
-| npm publish step in CD | Workflow exists and skips safely when `NPM_TOKEN` is absent. Actual npm publishing cannot be proven until npm publishing is configured through `NPM_TOKEN` or npm trusted publishing for this repo/package. |
+| npm package published | Complete for `@q32/core@0.1.1`; npm reports `0.1.1` as the latest published version. |
+| npm publish step in CD | Trusted publishing is configured for `q32llc/q32-core` and `.github/workflows/release.yml`; verify on the next GitHub release. |
 | Proven replacement in existing apps | Not complete. The library is evaluated as suitable, but no existing app has been migrated to consume it yet. |
 
 ## Recommended Next Proof Step
