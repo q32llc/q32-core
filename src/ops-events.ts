@@ -2,7 +2,8 @@ import type postgres from "postgres";
 import type { D1DatabaseLike } from "./d1.js";
 import { createId } from "./ids.js";
 
-export type OpsEventStatus = "started" | "ok" | "warning" | "error" | "skipped";
+export type StandardOpsEventStatus = "started" | "ok" | "warning" | "error" | "skipped";
+export type OpsEventStatus = StandardOpsEventStatus | (string & {});
 export type OpsEventSeverity = "debug" | "info" | "warn" | "error";
 
 export type OpsEventInput = {
@@ -82,8 +83,11 @@ export type OpsEventNormalizeOptions = {
 export type OpsEventColumnValue =
   | keyof NormalizedOpsEvent
   | "payloadJson"
+  | "payloadJsonOrNull"
   | "metricsJson"
+  | "metricsJsonOrNull"
   | "metadataJson"
+  | "metadataJsonOrNull"
   | "null";
 
 export type OpsEventColumn = {
@@ -137,9 +141,9 @@ export function normalizeOpsEvent(
     errorName: errorInfo.name,
     errorMessage: input.errorMessage ?? errorInfo.message,
     errorStack: errorInfo.stack,
-    payload: input.payload ?? {},
-    metrics: input.metrics ?? {},
-    metadata: input.metadata ?? {},
+    payload: input.payload === undefined ? {} : input.payload,
+    metrics: input.metrics === undefined ? {} : input.metrics,
+    metadata: input.metadata === undefined ? {} : input.metadata,
     occurredAt: normalizeOccurredAt(input.occurredAt, options.now),
     fingerprint: input.fingerprint ?? null,
   };
@@ -292,7 +296,7 @@ export const RELIN_OPERATIONAL_EVENTS_COLUMNS: OpsEventColumn[] = [
   { column: "event_id", value: "targetId" },
   { column: "destination_id", value: "destinationId" },
   { column: "duration_ms", value: "durationMs" },
-  { column: "metadata_json", value: "metadataJson" },
+  { column: "metadata_json", value: "metadataJsonOrNull" },
 ];
 
 export const ADGIRO_OPS_EVENTS_COLUMNS: OpsEventColumn[] = [
@@ -332,8 +336,11 @@ CREATE INDEX IF NOT EXISTS ops_events_severity_created_idx ON ops_events(severit
 function valueForColumn(event: NormalizedOpsEvent, column: OpsEventColumn): unknown {
   if (typeof column.value === "function") return column.value(event);
   if (column.value === "payloadJson") return JSON.stringify(event.payload ?? {});
+  if (column.value === "payloadJsonOrNull") return event.payload == null ? null : JSON.stringify(event.payload);
   if (column.value === "metricsJson") return JSON.stringify(event.metrics ?? {});
+  if (column.value === "metricsJsonOrNull") return event.metrics == null ? null : JSON.stringify(event.metrics);
   if (column.value === "metadataJson") return JSON.stringify(event.metadata ?? {});
+  if (column.value === "metadataJsonOrNull") return event.metadata == null ? null : JSON.stringify(event.metadata);
   if (column.value === "null") return null;
   return event[column.value];
 }
@@ -362,7 +369,7 @@ function statusFromSeverity(severity: OpsEventSeverity | undefined): OpsEventSta
 
 function severityFromStatus(status: OpsEventStatus | undefined): OpsEventSeverity {
   if (status === "error") return "error";
-  if (status === "warning" || status === "skipped") return "warn";
+  if (status === "warning" || status === "warn" || status === "skipped") return "warn";
   return "info";
 }
 

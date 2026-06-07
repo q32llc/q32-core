@@ -159,6 +159,46 @@ describe("ops event helpers", () => {
     ]);
   });
 
+  it("preserves Relin free-form status strings and null metadata", async () => {
+    const db = new MemoryD1();
+    const event = await recordD1OpsEvent(
+      db,
+      {
+        eventId: "op_2",
+        eventName: "stripe_reconciliation",
+        status: "rate_limited",
+        metadata: null,
+      },
+      {
+        tableName: "operational_events",
+        columns: RELIN_OPERATIONAL_EVENTS_COLUMNS,
+      },
+    );
+
+    expect(event.status).toBe("rate_limited");
+    expect(db.lastValues).toEqual([
+      "op_2",
+      "stripe_reconciliation",
+      "rate_limited",
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+  });
+
+  it("maps warn status to warn severity for apps that read severity", () => {
+    const event = normalizeOpsEvent({
+      eventName: "ops_monitor",
+      status: "warn",
+    });
+
+    expect(event.status).toBe("warn");
+    expect(event.severity).toBe("warn");
+  });
+
   it("builds mapped D1 inserts for Adgiro request and job ops_events", async () => {
     const db = new MemoryD1();
     await recordD1OpsEvent(
