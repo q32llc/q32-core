@@ -6,6 +6,7 @@ The first release focuses on common infrastructure repeated across Q32 apps:
 
 - AI provider contracts and JSON extraction helpers
 - API operation registries
+- API/MCP discovery surfaces: OpenAPI docs, API catalogs, Agent Skills indexes, MCP manifests, and bearer challenges
 - framework-neutral auth/session/MCP auth services with thin Hono and React Router adapters
 - billing plan/status primitives
 - Cloudflare binding guards
@@ -53,8 +54,10 @@ import {
   appUrl,
   createAuthSystem,
   createId,
+  apiCatalogLinkset,
   honoAuthMiddleware,
   jsonResponse,
+  mcpManifest,
   oauthAuthorizationServerMetadata,
   reactRouterAuthContext,
   renderSitemapXml,

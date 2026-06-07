@@ -25,7 +25,8 @@ This package was seeded from repeated infrastructure found across Erik/Q32 TypeS
 | Billing plan/status checks | `billing` | Replace local plan rank and active subscription status helpers around Stripe-backed apps. |
 | Worker test helpers | `testing` | Replace small fake Queue/R2 helpers and JSON response assertions in unit tests; complements workerd/Miniflare integration tests. |
 | OAuth/MCP metadata and storage | `oauth`, `mcp` | Replace repeated discovery metadata, API-to-tool descriptors, and configurable D1 OAuth client/code/token repositories. |
-| API operation registries | `api` | Replace local operation registries used for OpenAPI, admin APIs, and MCP exposure. |
+| API operation registries and discovery surfaces | `api` | Replace local operation registries, OpenAPI path generation, RFC 9727 API catalog linksets, Agent Skills indexes, and agent-discovery Link headers. |
+| MCP manifests and bearer challenges | `mcp` | Replace repeated server-card metadata, plain-GET MCP manifests, API-operation tool descriptors, tool annotations, and OAuth protected-resource challenge headers. |
 | Framework request adapters | `hono`, `react-router` | Translate Hono middleware and React Router loader/action requests into the same framework-neutral auth/API services. |
 
 ## Current Fit
