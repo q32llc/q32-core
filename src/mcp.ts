@@ -43,9 +43,9 @@ export function mcpWellKnownServerMetadata(options: {
   description?: string;
   authorizationServers?: string[];
   protectedResource?: string;
-  tools?: McpToolDescriptor[];
-  resources?: Array<Record<string, unknown>>;
-  prompts?: Array<Record<string, unknown>>;
+  tools?: readonly McpToolDescriptor[];
+  resources?: ReadonlyArray<Record<string, unknown>>;
+  prompts?: ReadonlyArray<Record<string, unknown>>;
   oauth?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
 }): Record<string, unknown> {
@@ -69,9 +69,9 @@ export function mcpManifest(options: {
   transport?: "streamable_http" | "http";
   anonymousDescription?: string;
   authenticatedDescription?: string;
-  tools?: McpToolDescriptor[];
-  resources?: Array<Record<string, unknown>>;
-  prompts?: Array<Record<string, unknown>>;
+  tools?: readonly McpToolDescriptor[];
+  resources?: ReadonlyArray<Record<string, unknown>>;
+  prompts?: ReadonlyArray<Record<string, unknown>>;
   metadata?: Record<string, unknown>;
 }): Record<string, unknown> {
   return {
