@@ -107,7 +107,7 @@ export type OAuthClientRegistration = Omit<OAuthClientInformation, "client_id" |
 export type OAuthTokens = {
   access_token: string;
   token_type: string;
-  expires_in: number;
+  expires_in?: number;
   refresh_token?: string;
   scope?: string;
 };
