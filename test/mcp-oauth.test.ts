@@ -6,6 +6,7 @@ import type {
   D1StatementResult,
 } from "../src/d1.js";
 import {
+  createOAuthRedirect,
   decryptOAuthTokenResponse,
   encryptOAuthTokenResponse,
   issueMcpOAuthTokenSet,
@@ -118,6 +119,181 @@ describe("MCP OAuth repository helpers", () => {
     });
   });
 
+  it("maps client registration defaults and stored client rows", async () => {
+    const db = new RecordingD1();
+    const repo = new McpOAuthRepository(db, {
+      defaultScope: "mcp:read mcp:write",
+      tokenEndpointAuthMethod: "client_secret_post",
+    });
+
+    db.nextFirst = null;
+    expect(await repo.getClient("missing")).toBeUndefined();
+
+    db.nextFirst = {
+      clientId: "mcpcli_1",
+      clientSecret: null,
+      clientName: "Agent",
+      redirectUrisJson: '["https://client.test/callback"]',
+      scope: null,
+      grantTypesJson: null,
+      responseTypesJson: "not json",
+      tokenEndpointAuthMethod: "none",
+      clientUri: null,
+      logoUri: null,
+      contactsJson: '["ops@example.com", 12]',
+      tosUri: null,
+      policyUri: null,
+      softwareId: "agent",
+      softwareVersion: null,
+      clientIdIssuedAt: 123,
+      clientSecretExpiresAt: null,
+    };
+    await expect(repo.getClient("mcpcli_1")).resolves.toMatchObject({
+      client_id: "mcpcli_1",
+      client_name: "Agent",
+      redirect_uris: ["https://client.test/callback"],
+      response_types: [],
+      contacts: ["ops@example.com"],
+    });
+
+    db.nextFirst = {
+      clientId: "mcpcli_registered",
+      clientSecret: null,
+      clientName: null,
+      redirectUrisJson: "[]",
+      scope: "mcp:read mcp:write",
+      grantTypesJson: "[]",
+      responseTypesJson: "[]",
+      tokenEndpointAuthMethod: "client_secret_post",
+      clientUri: null,
+      logoUri: null,
+      contactsJson: "[]",
+      tosUri: null,
+      policyUri: null,
+      softwareId: null,
+      softwareVersion: null,
+      clientIdIssuedAt: 123,
+      clientSecretExpiresAt: null,
+    };
+    const registered = await repo.registerClient({});
+
+    expect(registered).toMatchObject({
+      client_id: "mcpcli_registered",
+      scope: "mcp:read mcp:write",
+      token_endpoint_auth_method: "client_secret_post",
+    });
+    const insertValues = db.bindHistory.at(-2) ?? [];
+    expect(insertValues[4]).toBe("mcp:read mcp:write");
+    expect(insertValues[7]).toBe("client_secret_post");
+  });
+
+  it("reads authorization codes and tokens with configurable subjects", async () => {
+    const db = new RecordingD1();
+    const repo = new McpOAuthRepository(db, {
+      subjectColumns: [
+        { field: "accountId", column: "account_id" },
+        { field: "customerId", column: "customer_id" },
+      ],
+    });
+
+    db.nextFirst = {
+      authorizationCodeId: "mcpac_1",
+      clientId: "client_1",
+      accountId: "acct_1",
+      customerId: "cus_1",
+      redirectUri: "https://client.test/callback",
+      scopesJson: '["mcp:read"]',
+      resource: null,
+      codeChallenge: "challenge",
+      expiresAt: 200,
+      usedAt: null,
+    };
+    await expect(repo.getAuthorizationCode("code_1")).resolves.toMatchObject({
+      subject: { accountId: "acct_1", customerId: "cus_1" },
+    });
+
+    db.nextFirst = null;
+    await expect(repo.getAuthorizationCode("missing")).resolves.toBeNull();
+
+    db.nextFirst = {
+      tokenId: "mcptok_1",
+      clientId: "client_1",
+      accountId: "acct_1",
+      customerId: "cus_1",
+      scopesJson: '["mcp:read"]',
+      resource: null,
+      accessExpiresAt: 200,
+      refreshExpiresAt: null,
+      revokedAt: null,
+    };
+    await expect(repo.getTokenByAccessToken("access_1")).resolves.toMatchObject({
+      subject: { accountId: "acct_1", customerId: "cus_1" },
+    });
+  });
+
+  it("guards unsafe subject mappings and missing subject values", async () => {
+    const db = new RecordingD1();
+    const repo = new McpOAuthRepository(db, {
+      subjectColumns: [{ field: "customerId", column: "customer_id" }],
+    });
+
+    await expect(
+      repo.createTokenSet({
+        clientId: "client_1",
+        subject: { accountId: "acct_1" },
+        accessToken: "access_1",
+        refreshToken: null,
+        scopes: ["mcp:read"],
+        resource: null,
+        accessExpiresAt: 100,
+        refreshExpiresAt: null,
+      }),
+    ).rejects.toThrow("Missing OAuth subject field: customerId");
+
+    const unsafeRepo = new McpOAuthRepository(db, {
+      subjectColumns: [{ field: "bad-field", column: "bad-column" }],
+    });
+    await expect(unsafeRepo.getTokenByAccessToken("access_1")).rejects.toThrow(
+      "Unsafe SQL identifier",
+    );
+  });
+
+  it("handles token revocation, use timestamps, and refresh rotation modes", async () => {
+    const db = new RecordingD1();
+    const repo = new McpOAuthRepository(db);
+
+    await repo.consumeAuthorizationCode("mcpac_1");
+    expect(db.lastQuery).toContain("SET used_at = CURRENT_TIMESTAMP");
+    await repo.touchAccessToken("mcptok_1");
+    expect(db.lastQuery).toContain("access_last_used_at");
+
+    await expect(
+      repo.markTokenRotated({
+        tokenId: "mcptok_1",
+        rotatedToTokenId: "mcptok_2",
+        refreshReuseExpiresAt: 123,
+        rotatedResponseCiphertext: "cipher",
+        rotatedResponseNonce: "nonce",
+      }),
+    ).resolves.toBe(true);
+    expect(db.lastQuery).toContain("SET revoked_at = CURRENT_TIMESTAMP");
+
+    db.changes = 0;
+    const rotatingRepo = new McpOAuthRepository(db, {
+      refreshRotationColumns: true,
+    });
+    await expect(
+      rotatingRepo.markTokenRotated({
+        tokenId: "mcptok_1",
+        rotatedToTokenId: "mcptok_2",
+        refreshReuseExpiresAt: 123,
+        rotatedResponseCiphertext: "cipher",
+        rotatedResponseNonce: "nonce",
+      }),
+    ).resolves.toBe(false);
+    expect(db.lastQuery).toContain("rotated_to_token_id");
+  });
+
   it("encrypts cached token responses for refresh rotation grace windows", async () => {
     const tokens = {
       access_token: "access",
@@ -142,6 +318,7 @@ describe("MCP OAuth repository helpers", () => {
   });
 
   it("parses scope and JSON scope columns defensively", () => {
+    expect(parseOAuthScope(undefined)).toEqual([]);
     expect(parseOAuthScope("mcp:read  mcp:write")).toEqual([
       "mcp:read",
       "mcp:write",
@@ -149,25 +326,38 @@ describe("MCP OAuth repository helpers", () => {
     expect(parseOAuthJsonArray('["mcp:read", 1, false]')).toEqual([
       "mcp:read",
     ]);
+    expect(parseOAuthJsonArray(undefined)).toEqual([]);
     expect(parseOAuthJsonArray("not json")).toEqual([]);
+  });
+
+  it("creates OAuth redirects while skipping undefined params", () => {
+    const redirect = createOAuthRedirect("https://client.test/callback?x=1", {
+      code: "code_1",
+      state: undefined,
+    });
+
+    expect(redirect).toBe("https://client.test/callback?x=1&code=code_1");
   });
 });
 
 class RecordingD1 implements D1DatabaseLike {
   lastQuery = "";
   lastValues: D1Primitive[] = [];
+  bindHistory: D1Primitive[][] = [];
   nextFirst: Record<string, unknown> | null = null;
+  changes = 1;
 
   prepare(query: string): D1PreparedStatementLike {
     this.lastQuery = query;
     const statement: D1PreparedStatementLike = {
       bind: (...values: D1Primitive[]) => {
         this.lastValues = values;
+        this.bindHistory.push(values);
         return statement;
       },
       run: async (): Promise<D1StatementResult> => ({
         success: true,
-        meta: { changes: 1 },
+        meta: { changes: this.changes },
       }),
       first: async <T extends object>() => this.nextFirst as T | null,
       all: async <T extends object>() => ({ results: [] as T[] }),
