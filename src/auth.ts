@@ -20,6 +20,7 @@ export type CookieOptions = {
 export type SessionAuthOptions<TSession> = {
   secret: string;
   cookie: CookieOptions;
+  verifyToken?: (token: string | undefined, secret: string, request: Request) => Promise<TSession | null> | TSession | null;
   verify?: (payload: TSession) => Promise<TSession | null> | TSession | null;
 };
 
@@ -41,7 +42,9 @@ export class AuthSystem<TPrincipal = unknown, TSession = unknown> {
     const config = this.options.session;
     if (!config) return null;
     const token = getCookie(request, config.cookie.name);
-    const payload = await verifySession<TSession>(token, config.secret);
+    const payload = config.verifyToken
+      ? await config.verifyToken(token, config.secret, request)
+      : await verifySession<TSession>(token, config.secret);
     if (!payload) return null;
     return config.verify ? await config.verify(payload) : payload;
   }

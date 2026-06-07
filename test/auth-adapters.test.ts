@@ -45,6 +45,24 @@ describe("framework-neutral auth", () => {
     expect(getCookie(request, "sid")).toBe(token);
   });
 
+  it("supports app-provided cookie token verifiers", async () => {
+    const auth = createAuthSystem({
+      session: {
+        cookie: { name: "sid" },
+        secret: "secret",
+        verifyToken: (token, secret) => (token === `${secret}:raw` ? { accountId: "acct_raw" } : null),
+      },
+      loadPrincipal: (session: { accountId?: string }) => (session.accountId ? { accountId: session.accountId } : null),
+    });
+
+    await expect(
+      auth.contextFromRequest(new Request("https://app.test", { headers: { cookie: "sid=secret%3Araw" } })),
+    ).resolves.toMatchObject({
+      session: { accountId: "acct_raw" },
+      principal: { accountId: "acct_raw" },
+    });
+  });
+
   it("shares the same auth object across Hono-like and React Router-like adapters", async () => {
     const token = await signSession({ accountId: "acct_1" }, "secret");
     const auth = createAuthSystem({
