@@ -30,6 +30,10 @@ pnpm test
 pnpm build
 ```
 
+## Release
+
+Publishing is handled by the `Release` GitHub Actions workflow when a GitHub release is published. Configure an npm automation token as the repository secret `NPM_TOKEN` before the first release.
+
 ## Modules
 
 ```ts
