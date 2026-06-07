@@ -141,6 +141,7 @@ describe("ops event helpers", () => {
       {
         tableName: "operational_events",
         columns: RELIN_OPERATIONAL_EVENTS_COLUMNS,
+        normalize: { idPrefix: "op" },
       },
     );
 
@@ -172,6 +173,7 @@ describe("ops event helpers", () => {
       {
         tableName: "operational_events",
         columns: RELIN_OPERATIONAL_EVENTS_COLUMNS,
+        normalize: { idPrefix: "op" },
       },
     );
 
@@ -197,6 +199,25 @@ describe("ops event helpers", () => {
 
     expect(event.status).toBe("warn");
     expect(event.severity).toBe("warn");
+  });
+
+  it("uses D1 normalization options when creating mapped IDs", async () => {
+    const db = new MemoryD1();
+    const event = await recordD1OpsEvent(
+      db,
+      {
+        eventName: "projection.applied",
+        status: "ok",
+      },
+      {
+        tableName: "operational_events",
+        columns: RELIN_OPERATIONAL_EVENTS_COLUMNS,
+        normalize: { idPrefix: "op" },
+      },
+    );
+
+    expect(event.eventId).toMatch(/^op_/);
+    expect(db.lastValues[0]).toBe(event.eventId);
   });
 
   it("builds mapped D1 inserts for Adgiro request and job ops_events", async () => {

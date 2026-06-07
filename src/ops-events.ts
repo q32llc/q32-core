@@ -192,6 +192,7 @@ export async function recordPostgresOpsEvent(
 export type D1OpsEventConfig = {
   tableName?: string;
   columns?: OpsEventColumn[];
+  normalize?: OpsEventNormalizeOptions;
 };
 
 export async function recordD1OpsEvent(
@@ -199,7 +200,7 @@ export async function recordD1OpsEvent(
   input: OpsEventInput | NormalizedOpsEvent,
   config: D1OpsEventConfig = {},
 ): Promise<NormalizedOpsEvent> {
-  const event = isNormalizedOpsEvent(input) ? input : normalizeOpsEvent(input);
+  const event = isNormalizedOpsEvent(input) ? input : normalizeOpsEvent(input, config.normalize);
   const columns = config.columns ?? DEFAULT_D1_OPS_EVENT_COLUMNS;
   const tableName = config.tableName ?? "ops_events";
   const sql = `INSERT INTO ${quoteIdentifier(tableName)} (${columns.map((column) => quoteIdentifier(column.column)).join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`;
