@@ -122,7 +122,7 @@ export class GoogleOAuthClient {
     if (!response.ok) throw new Error(`Google profile fetch failed: ${response.status}`);
     const profile = (await response.json()) as GoogleUserProfile;
     if (!profile.sub || !profile.email) throw new Error("Google profile missing identity fields");
-    if (options.requireVerifiedEmail && profile.email_verified === false) throw new Error("Google profile email is not verified");
+    if (options.requireVerifiedEmail && profile.email_verified === false) throw new Error("Google profile missing verified identity fields");
     return profile;
   }
 }
