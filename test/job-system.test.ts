@@ -51,9 +51,95 @@ describe("DurableJobDispatcher", () => {
       lastError: "temporary",
     });
   });
+
+  it("handles missing handlers, stopped jobs, handler requeues, and terminal failures", async () => {
+    const events: Array<{ jobId: string; eventName: string; severity?: string }> = [];
+    const jobs = new MemoryDurableJobs();
+    const missing = await jobs.enqueue({ jobType: "missing" });
+    const missingDispatcher = new DurableJobDispatcher({
+      jobs,
+      services: {},
+      events: (job, event) => events.push({ jobId: job.jobId, eventName: event.eventName, severity: event.severity }),
+      handlers: {},
+    });
+    await expect(missingDispatcher.run(missing.jobId)).rejects.toThrow("No handler registered");
+    await expect(jobs.get(missing.jobId)).resolves.toMatchObject({ status: "failed" });
+
+    const stopping = await jobs.enqueue({ jobType: "stopper" });
+    const stopDispatcher = new DurableJobDispatcher({
+      jobs,
+      services: {},
+      events: (job, event) => events.push({ jobId: job.jobId, eventName: event.eventName, severity: event.severity }),
+      handlers: { stopper: async () => ({ kind: "stopped" as const, result: { stopped: true } }), demo: async () => ({ ok: false }) },
+    });
+    await expect(stopDispatcher.run(stopping.jobId)).resolves.toEqual({ kind: "stopped", result: { stopped: true } });
+
+    const requeue = await jobs.enqueue({ jobType: "demo", payload: { count: 1 } });
+    await expect(
+      stopDispatcher.run(requeue.jobId),
+    ).resolves.toEqual({ kind: "done", result: { ok: false } });
+
+    const explicit = await jobs.enqueue({ jobType: "explicit" });
+    const explicitDispatcher = new DurableJobDispatcher({
+      jobs,
+      services: {},
+      handlers: {
+        explicit: async () => ({
+          kind: "requeue" as const,
+          payload: { count: 2 },
+          result: { waiting: true },
+          availableAt: "2026-06-07T00:02:00.000Z",
+        }),
+      },
+    });
+    await expect(explicitDispatcher.run(explicit.jobId)).resolves.toEqual({
+      kind: "requeue",
+      payload: { count: 2 },
+      result: { waiting: true },
+      availableAt: "2026-06-07T00:02:00.000Z",
+    });
+    await expect(jobs.get(explicit.jobId)).resolves.toMatchObject({
+      status: "queued",
+      payload: { count: 2 },
+      result: { waiting: true },
+    });
+
+    const terminal = await jobs.enqueue({ jobType: "terminal", maxAttempts: 1 });
+    const terminalDispatcher = new DurableJobDispatcher({
+      jobs,
+      services: {},
+      events: (job, event) => events.push({ jobId: job.jobId, eventName: event.eventName, severity: event.severity }),
+      handlers: {
+        terminal: async () => {
+          throw new Error("permanent");
+        },
+      },
+    });
+    await expect(terminalDispatcher.run(terminal.jobId)).rejects.toThrow("permanent");
+    await expect(jobs.get(terminal.jobId)).resolves.toMatchObject({ status: "failed", lastError: "permanent" });
+    expect(events.some((event) => event.eventName === "job.failed")).toBe(true);
+  });
 });
 
 describe("runParentJobOrchestration", () => {
+  it("completes immediately when a parent has no children to queue", async () => {
+    const jobs = new MemoryDurableJobs();
+    const parent = await jobs.enqueue({ jobType: "parent", payload: { stage: "empty" } });
+    await expect(
+      runParentJobOrchestration(
+        { job: parent, jobs, services: {}, events: noopEvents, shouldStop: async () => false },
+        { children: [], failureMode: "continue" },
+      ),
+    ).resolves.toMatchObject({
+      kind: "done",
+      result: {
+        stage: "complete",
+        failureMode: "continue",
+        summary: { total: 0, allTerminal: false },
+      },
+    });
+  });
+
   it("queues children once and completes after child statuses roll up", async () => {
     const jobs = new MemoryDurableJobs();
     const parent = await jobs.enqueue({ jobType: "parent", payload: { stage: "start" } });
@@ -132,6 +218,25 @@ describe("runParentJobOrchestration", () => {
     expect(children.map((job) => job.status).sort()).toEqual(["failed", "stopped"]);
     expect(children.find((job) => job.status === "stopped")?.lastError).toBeNull();
   });
+
+  it("continues through child failures when configured to continue", async () => {
+    const jobs = new MemoryDurableJobs();
+    const parent = await jobs.enqueue({ jobType: "parent" });
+    const failed = await jobs.enqueue({ jobType: "child", parentJobId: parent.jobId });
+    const ok = await jobs.enqueue({ jobType: "child", parentJobId: parent.jobId });
+    await jobs.fail(failed.jobId, "bad child");
+    await jobs.succeed(ok.jobId);
+
+    await expect(
+      runParentJobOrchestration(
+        { job: parent, jobs, services: {}, events: noopEvents, shouldStop: async () => false },
+        { children: [], failureMode: "continue" },
+      ),
+    ).resolves.toMatchObject({
+      kind: "done",
+      result: { stage: "complete", summary: { failed: 1, succeeded: 1, allTerminal: true } },
+    });
+  });
 });
 
 describe("job operation helpers", () => {
@@ -145,6 +250,32 @@ describe("job operation helpers", () => {
     ).toEqual({
       lockKey: "jobop:site:site_123:generate-copy:campaign:cmp_1",
       concurrencyKey: "jobop:site:site_123:generate-copy",
+      concurrencyLimit: 1,
+    });
+  });
+
+  it("handles global, custom entity key, no-dedupe, and concurrency variants", () => {
+    expect(
+      jobOperationKeys({
+        operationKey: " Sync / Things ",
+        dedupeActive: false,
+        concurrencyScope: "Provider/API",
+        concurrencyLimit: 4.9,
+      }),
+    ).toEqual({
+      lockKey: null,
+      concurrencyKey: "jobop:global:provider-api",
+      concurrencyLimit: 4,
+    });
+    expect(
+      jobOperationKeys({
+        operationKey: "sync",
+        entity: { entityType: "company", entityId: "cik1", entityKey: " custom:key " },
+        concurrencyLimit: 0,
+      }),
+    ).toEqual({
+      lockKey: "jobop:global:sync:custom:key",
+      concurrencyKey: "jobop:global:sync",
       concurrencyLimit: 1,
     });
   });
@@ -177,9 +308,35 @@ describe("job operation helpers", () => {
       },
     });
   });
+
+  it("enqueues non-deduped operation jobs with scheduling options", async () => {
+    const jobs = new MemoryDurableJobs();
+    const job = await enqueueJobOperation(jobs, {
+      jobType: "sync",
+      operationKey: "sync",
+      dedupeActive: false,
+      maxAttempts: null,
+      availableAt: "2026-06-07T01:00:00.000Z",
+      payload: { n: 1 },
+    });
+
+    expect(job).toMatchObject({
+      enqueuePolicy: "enqueue",
+      lockKey: null,
+      concurrencyLimit: 1,
+      availableAt: "2026-06-07T01:00:00.000Z",
+      payload: { n: 1, operationKey: "sync" },
+    });
+  });
 });
 
 describe("PostgresJobStore", () => {
+  it("rejects unsafe identifiers", () => {
+    expect(() => new PostgresJobStore(new RecordingPostgresSql(), { tableName: "jobs;drop" })).toThrow(
+      "Invalid Postgres identifier",
+    );
+  });
+
   it("supports Graphilize-style job tables without metadata/site columns", async () => {
     const sql = new RecordingPostgresSql();
     const store = new PostgresJobStore(sql, {
@@ -221,6 +378,116 @@ describe("PostgresJobStore", () => {
     expect(sql.queries[0].query).not.toContain("metadata_json");
     expect(sql.queries[1].query).toContain("'{}'::jsonb AS \"metadataJson\"");
   });
+
+  it("uses metadata queue names, default columns, status maps, and active-lock dedupe", async () => {
+    const sql = new RecordingPostgresSql();
+    sql.row = {
+      jobId: "job_existing",
+      orgId: "org_1",
+      siteId: "site_1",
+      queueName: "priority",
+      jobType: "demo",
+      status: "cancelled",
+      payloadJson: { n: 1 },
+      resultJson: null,
+      metadataJson: { queueName: "priority" },
+      parentJobId: null,
+      lockKey: "lock_1",
+      concurrencyKey: "ckey",
+      concurrencyLimit: "2",
+      enqueuePolicy: "dedupe_active",
+      attemptCount: "1",
+      maxAttempts: "5",
+      availableAt: new Date("2026-06-07T00:00:00.000Z"),
+      startedAt: undefined,
+      completedAt: undefined,
+      lastError: "",
+      createdAt: new Date("2026-06-07T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-07T00:00:01.000Z"),
+    };
+    const store = new PostgresJobStore(sql, {
+      reverseStatusMap: { cancelled: "stopped" },
+      statusMap: { stopped: "cancelled" },
+    });
+
+    const existing = await store.enqueue({
+      jobType: "demo",
+      payload: ["not-record"],
+      metadata: { queueName: "priority" },
+      enqueuePolicy: "dedupe_active",
+      lockKey: "lock_1",
+    });
+
+    expect(existing).toMatchObject({
+      jobId: "job_existing",
+      status: "stopped",
+      metadata: { queueName: "priority" },
+      concurrencyLimit: 2,
+    });
+    expect(sql.queries[0].query).toContain("WHERE \"lock_key\" = $1");
+  });
+
+  it("generates SQL for claim, completion, requeue, stop, and child updates", async () => {
+    const sql = new RecordingPostgresSql();
+    const store = new PostgresJobStore(sql, {
+      tableName: "graph_jobs",
+      queueName: "graphilize-ingest",
+      columns: {
+        orgId: "graph_id",
+        siteId: null,
+        metadataJson: null,
+        attemptCount: "attempts",
+        availableAt: "run_after",
+        startedAt: "locked_at",
+        completedAt: "finished_at",
+        lastError: "error_message",
+      },
+      statusMap: { stopped: "cancelled" },
+      reverseStatusMap: { cancelled: "stopped" },
+    });
+    sql.row = {
+      jobId: "job_pg",
+      orgId: "graph_1",
+      siteId: null,
+      queueName: "graphilize-ingest",
+      jobType: "demo",
+      status: "queued",
+      payloadJson: "{}",
+      resultJson: "{}",
+      metadataJson: "{}",
+      parentJobId: null,
+      lockKey: null,
+      concurrencyKey: null,
+      concurrencyLimit: null,
+      enqueuePolicy: "enqueue",
+      attemptCount: 0,
+      maxAttempts: 3,
+      availableAt: "2026-06-07T00:00:00.000Z",
+      startedAt: null,
+      completedAt: null,
+      lastError: null,
+      createdAt: "2026-06-07T00:00:00.000Z",
+      updatedAt: "2026-06-07T00:00:00.000Z",
+    };
+
+    await store.claim("job_pg");
+    await store.succeed("job_pg", { ok: true });
+    await store.requeue("job_pg", { payload: { retry: true }, result: { waiting: true }, availableAt: null, lastError: "retry" });
+    await store.stop("job_pg");
+    await store.fail("job_pg", new Error("failed"));
+    await store.requestStop("job_pg");
+    await store.markQueuedChildrenTerminal("job_parent", "failed", "bad");
+    await store.markQueuedChildrenTerminal("job_parent", "stopped", "stop");
+    await store.requestStopActiveChildren("job_parent");
+
+    const combined = sql.queries.map((query) => query.query).join("\n");
+    expect(combined).toContain("AND \"queue_name\" = $2");
+    expect(combined).toContain("\"status\" = 'running'");
+    expect(combined).toContain("\"status\" = $1");
+    expect(combined).toContain("\"status\" = 'queued'");
+    expect(combined).toContain("THEN 'cancelled'");
+    expect(combined).toContain("SELECT COUNT(*)::int AS changed FROM updated");
+  });
 });
 
 describe("PipelineManager", () => {
@@ -251,6 +518,59 @@ describe("PipelineManager", () => {
       },
     ]);
   });
+
+  it("honors explicit next steps, omitted continuation ids, and default completion", async () => {
+    const enqueued: Array<{ job: unknown; options: QueueSendOptions | undefined }> = [];
+    const pipeline = new PipelineManager<"a" | "b" | "c", { n: number }>({
+      pipeline: "demo",
+      steps: ["a", "b", "c"],
+      enqueue: async (job, options) => {
+        enqueued.push({ job, options });
+      },
+      handlers: {
+        a: async ({ job }) => ({ nextStep: { step: "c", state: { n: job.state.n + 2 } } }),
+        b: async () => ({ nextStep: null }),
+        c: async () => undefined,
+      },
+    });
+
+    expect(pipeline.getNextStep("a")).toBe("b");
+    await expect(pipeline.run({ pipeline: "demo", runId: "run2", step: "a", state: { n: 1 } })).resolves.toMatchObject({
+      nextStep: "c",
+      state: { n: 3 },
+    });
+    expect(enqueued).toEqual([{ job: { pipeline: "demo", runId: "run2", step: "c", state: { n: 3 } }, options: undefined }]);
+    await expect(pipeline.run({ pipeline: "demo", runId: "run2", step: "c", state: { n: 3 } })).resolves.toMatchObject({
+      completion: { status: "completed", targetsTotal: 0, targetsSucceeded: 0, targetsFailed: 0 },
+    });
+    await expect(pipeline.run({ pipeline: "other", runId: "run2", step: "a", state: { n: 1 } })).rejects.toThrow("Unexpected pipeline");
+    expect(() => pipeline.getNextStep("missing" as "a")).toThrow("Unknown pipeline step");
+  });
+
+  it("honors explicit null next steps and explicit completion payloads", async () => {
+    const enqueued: unknown[] = [];
+    const pipeline = new PipelineManager<"a" | "b", { n: number }>({
+      pipeline: "demo",
+      steps: ["a", "b"],
+      enqueue: async (job) => {
+        enqueued.push(job);
+      },
+      handlers: {
+        a: async () => ({
+          nextStep: null,
+          completion: { status: "skipped", targetsTotal: 2, targetsSucceeded: 0, targetsFailed: 0, message: null },
+        }),
+        b: async () => undefined,
+      },
+    });
+
+    await expect(pipeline.run({ pipeline: "demo", runId: "run3", step: "a", state: { n: 1 } })).resolves.toEqual({
+      nextStep: null,
+      state: { n: 1 },
+      completion: { status: "skipped", targetsTotal: 2, targetsSucceeded: 0, targetsFailed: 0, message: null },
+    });
+    expect(enqueued).toEqual([]);
+  });
 });
 
 describe("createJobPublisher", () => {
@@ -270,6 +590,13 @@ describe("createJobPublisher", () => {
 
     expect(sent).toEqual([{ id: "queued" }]);
     expect(handled).toEqual([{ id: "inline" }]);
+  });
+
+  it("rejects missing queue and inline handlers", async () => {
+    await expect(createJobPublisher<{ id: string }>({}).put({ id: "none" })).rejects.toThrow("Job queue is not configured");
+    await expect(createJobPublisher<{ id: string }>({ inline: true }).put({ id: "inline" })).rejects.toThrow(
+      "Inline job publisher requires handleInline",
+    );
   });
 });
 
@@ -416,7 +743,7 @@ class MemoryDurableJobs implements DurableJobRepository {
 
 class RecordingPostgresSql {
   readonly queries: Array<{ query: string; values: readonly unknown[] }> = [];
-  private row: Record<string, unknown> | null = null;
+  row: Record<string, unknown> | null = null;
 
   async unsafe<Row extends object = Record<string, unknown>>(
     query: string,
