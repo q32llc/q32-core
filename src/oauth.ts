@@ -122,6 +122,9 @@ export type McpOAuthRepositoryOptions = {
   tokenEndpointAuthMethod?: string;
   subjectColumns?: McpOAuthSubjectColumn[];
   refreshRotationColumns?: boolean;
+  createClientId?: () => string;
+  createAuthorizationCodeId?: () => string;
+  createTokenId?: () => string;
 };
 
 export type McpAuthorizationCodeRow = {
@@ -292,7 +295,12 @@ export class GitHubOAuthClient {
 }
 
 export class McpOAuthRepository {
-  private readonly options: Required<Pick<McpOAuthRepositoryOptions, "defaultScope" | "tokenEndpointAuthMethod" | "subjectColumns" | "refreshRotationColumns">>;
+  private readonly options: Required<
+    Pick<
+      McpOAuthRepositoryOptions,
+      "defaultScope" | "tokenEndpointAuthMethod" | "subjectColumns" | "refreshRotationColumns" | "createClientId" | "createAuthorizationCodeId" | "createTokenId"
+    >
+  >;
 
   constructor(
     private readonly db: D1DatabaseLike,
@@ -303,6 +311,9 @@ export class McpOAuthRepository {
       tokenEndpointAuthMethod: options.tokenEndpointAuthMethod ?? "none",
       subjectColumns: options.subjectColumns ?? DEFAULT_MCP_SUBJECT_COLUMNS,
       refreshRotationColumns: options.refreshRotationColumns ?? false,
+      createClientId: options.createClientId ?? (() => createId("mcpcli")),
+      createAuthorizationCodeId: options.createAuthorizationCodeId ?? (() => createId("mcpac")),
+      createTokenId: options.createTokenId ?? (() => createId("mcptok")),
     };
   }
 
@@ -341,7 +352,7 @@ export class McpOAuthRepository {
   }
 
   async registerClient(client: OAuthClientRegistration): Promise<OAuthClientInformation> {
-    const clientId = createId("mcpcli");
+    const clientId = this.options.createClientId();
     const clientIdIssuedAt = nowEpochSeconds();
     await this.db
       .prepare(
@@ -424,7 +435,7 @@ export class McpOAuthRepository {
       `,
       )
       .bind(
-        createId("mcpac"),
+        this.options.createAuthorizationCodeId(),
         await sha256Hex(input.code),
         input.clientId,
         ...subjectValues,
@@ -487,7 +498,7 @@ export class McpOAuthRepository {
   }): Promise<string> {
     const subjectColumns = this.options.subjectColumns.map((column) => quoteIdentifier(column.column));
     const subjectValues = this.options.subjectColumns.map((column) => requiredSubject(input.subject, column.field));
-    const tokenId = createId("mcptok");
+    const tokenId = this.options.createTokenId();
     await this.db
       .prepare(
         `

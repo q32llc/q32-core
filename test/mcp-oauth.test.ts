@@ -19,6 +19,7 @@ describe("MCP OAuth repository helpers", () => {
   it("writes authorization codes with configurable subject columns", async () => {
     const db = new RecordingD1();
     const repo = new McpOAuthRepository(db, {
+      createAuthorizationCodeId: () => "mcpac_custom",
       subjectColumns: [
         { field: "accountId", column: "account_id" },
         { field: "customerId", column: "customer_id" },
@@ -39,7 +40,7 @@ describe("MCP OAuth repository helpers", () => {
     expect(db.lastQuery).toContain('"account_id"');
     expect(db.lastQuery).toContain('"customer_id"');
     expect(db.lastValues).toEqual([
-      expect.stringMatching(/^mcpac_/),
+      "mcpac_custom",
       expect.stringMatching(/^[a-f0-9]{64}$/),
       "client_1",
       "acct_1",
@@ -54,7 +55,9 @@ describe("MCP OAuth repository helpers", () => {
 
   it("issues token sets through the shared D1 mapper", async () => {
     const db = new RecordingD1();
-    const repo = new McpOAuthRepository(db);
+    const repo = new McpOAuthRepository(db, {
+      createTokenId: () => "mcptok_custom",
+    });
 
     const issued = await issueMcpOAuthTokenSet(
       repo,
@@ -73,7 +76,7 @@ describe("MCP OAuth repository helpers", () => {
       },
     );
 
-    expect(issued.tokenId).toMatch(/^mcptok_/);
+    expect(issued.tokenId).toBe("mcptok_custom");
     expect(issued.tokens.access_token).toBe("mcpat_custom");
     expect(issued.tokens.refresh_token).toBe("mcprt_custom");
     expect(issued.accessExpiresAt).toBe(110);
@@ -126,6 +129,7 @@ describe("MCP OAuth repository helpers", () => {
     const repo = new McpOAuthRepository(db, {
       defaultScope: "mcp:read mcp:write",
       tokenEndpointAuthMethod: "client_secret_post",
+      createClientId: () => "mcpcli_custom",
     });
 
     db.nextFirst = null;
@@ -159,7 +163,7 @@ describe("MCP OAuth repository helpers", () => {
     });
 
     db.nextFirst = {
-      clientId: "mcpcli_registered",
+      clientId: "mcpcli_custom",
       clientSecret: null,
       clientName: null,
       redirectUrisJson: "[]",
@@ -180,7 +184,7 @@ describe("MCP OAuth repository helpers", () => {
     const registered = await repo.registerClient({});
 
     expect(registered).toMatchObject({
-      client_id: "mcpcli_registered",
+      client_id: "mcpcli_custom",
       scope: "mcp:read mcp:write",
       token_endpoint_auth_method: "client_secret_post",
     });
