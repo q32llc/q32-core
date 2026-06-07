@@ -11,6 +11,7 @@ The first release focuses on common infrastructure repeated across Q32 apps:
 - environment parsing
 - email provider contracts and address helpers
 - IDs, tokens, and signed session cookies
+- hash and HMAC helpers
 - HTTP JSON/error helpers
 - D1-like database types and migration runner
 - D1-backed jobs

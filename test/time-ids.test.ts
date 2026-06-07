@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createId, fromBase64Url, toBase64Url } from "../src/ids.js";
+import { createBase36Id, createBase36Token, createId, fromBase64Url, toBase64Url } from "../src/ids.js";
 import { addSeconds, epochSeconds, isFutureIso, nowIso } from "../src/time.js";
 
 describe("time helpers", () => {
@@ -19,6 +19,8 @@ describe("id helpers", () => {
     expect(createId("bad prefix!", 4)).toMatch(/^bad_prefix_/);
     const encoded = toBase64Url("hello");
     expect(new TextDecoder().decode(fromBase64Url(encoded))).toBe("hello");
+    expect(createBase36Id("evt")).toMatch(/^evt_[0-9a-z]{20}$/);
+    expect(createBase36Token("tok")).toMatch(/^tok_[0-9a-z]{40}$/);
   });
 
   it("requires non-empty prefixes", () => {

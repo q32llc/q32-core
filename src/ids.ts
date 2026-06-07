@@ -1,4 +1,5 @@
 const DEFAULT_TOKEN_BYTES = 32;
+const BASE36_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 export function createId(prefix: string, bytes = 12): string {
   const cleanPrefix = prefix.trim().replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -8,6 +9,27 @@ export function createId(prefix: string, bytes = 12): string {
 
 export function createToken(prefix = "tok", bytes = DEFAULT_TOKEN_BYTES): string {
   return createId(prefix, bytes);
+}
+
+export function randomBase36(length: number): string {
+  const safeLength = Math.max(1, Math.floor(length));
+  const bytes = new Uint8Array(safeLength);
+  crypto.getRandomValues(bytes);
+  let value = "";
+  for (const byte of bytes) value += BASE36_ALPHABET[byte % BASE36_ALPHABET.length];
+  return value;
+}
+
+export function createBase36Id(prefix: string, length = 20): string {
+  const cleanPrefix = prefix.trim();
+  if (!cleanPrefix) throw new Error("ID prefix is required.");
+  return `${cleanPrefix}_${randomBase36(length)}`;
+}
+
+export function createBase36Token(prefix: string, length = 40): string {
+  const cleanPrefix = prefix.trim();
+  if (!cleanPrefix) throw new Error("Token prefix is required.");
+  return `${cleanPrefix}_${randomBase36(length)}`;
 }
 
 export function randomBase64Url(bytes = DEFAULT_TOKEN_BYTES): string {
