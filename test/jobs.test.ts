@@ -40,6 +40,26 @@ describe("D1JobStore", () => {
     })).rejects.toThrow("bad");
     await expect(store.get(job.jobId)).resolves.toMatchObject({ status: "failed", lastError: "bad" });
   });
+
+  it("supports app status event hooks and max attempt policy", async () => {
+    const db = new MemoryJobDb();
+    const events: Array<{ status: string; message: string; attempts: number }> = [];
+    const store = new D1JobStore(db, {
+      defaultMaxAttempts: 1,
+      onStatusEvent: ({ job, status, message }) => {
+        events.push({ status, message, attempts: job.maxAttempts });
+      },
+    });
+    const job = await store.enqueue({ jobType: "demo" });
+
+    await store.run(job.jobId, async () => ({ ok: true }));
+
+    expect(events).toEqual([
+      { status: "queued", message: "Job queued.", attempts: 1 },
+      { status: "running", message: "Job started.", attempts: 1 },
+      { status: "succeeded", message: "Job succeeded.", attempts: 1 },
+    ]);
+  });
 });
 
 class MemoryJobDb implements D1DatabaseLike {
@@ -74,14 +94,37 @@ class MemoryStatement implements D1PreparedStatementLike {
   async run(): Promise<D1StatementResult> {
     const q = this.query.toLowerCase();
     if (q.includes("insert into jobs")) {
-      const [jobId, jobType, payloadJson, lockKey, maxAttempts, availableAt, createdAt, updatedAt] = this.bindings;
+      const [
+        jobId,
+        jobType,
+        orgId,
+        siteId,
+        payloadJson,
+        metadataJson,
+        parentJobId,
+        lockKey,
+        concurrencyKey,
+        concurrencyLimit,
+        enqueuePolicy,
+        maxAttempts,
+        availableAt,
+        createdAt,
+        updatedAt,
+      ] = this.bindings;
       this.db.rows.set(String(jobId), {
         jobId: String(jobId),
         jobType: String(jobType),
         status: "queued",
         payload: JSON.parse(String(payloadJson)),
         result: null,
+        orgId: orgId ? String(orgId) : null,
+        siteId: siteId ? String(siteId) : null,
+        parentJobId: parentJobId ? String(parentJobId) : null,
         lockKey: lockKey ? String(lockKey) : null,
+        concurrencyKey: concurrencyKey ? String(concurrencyKey) : null,
+        concurrencyLimit: concurrencyLimit === null ? null : Number(concurrencyLimit),
+        enqueuePolicy: enqueuePolicy === "dedupe_active" ? "dedupe_active" : "enqueue",
+        metadata: JSON.parse(String(metadataJson)),
         attemptCount: 0,
         maxAttempts: Number(maxAttempts),
         availableAt: availableAt ? String(availableAt) : null,
@@ -94,32 +137,34 @@ class MemoryStatement implements D1PreparedStatementLike {
       return changed(1);
     }
     if (q.includes("set status = 'running'")) {
-      const [, updatedAt, jobId] = this.bindings;
+      const [startedAt, updatedAt, jobId] = this.bindings;
       const row = this.db.rows.get(String(jobId));
       if (!row) return changed(0);
       row.status = "running";
       row.attemptCount += 1;
-      row.startedAt ??= String(updatedAt);
+      row.startedAt = String(startedAt);
       row.updatedAt = String(updatedAt);
       return changed(1);
     }
-    if (q.includes("set status = 'succeeded'")) {
-      const [resultJson, completedAt, updatedAt, jobId] = this.bindings;
+    if (q.includes("set status = ?") && q.includes("result_json = ?")) {
+      const [status, resultJson, lastError, completedAt, updatedAt, jobId] = this.bindings;
       const row = this.db.rows.get(String(jobId));
       if (!row) return changed(0);
-      row.status = "succeeded";
+      row.status = status as JobRecord["status"];
       row.result = JSON.parse(String(resultJson));
+      row.lastError = lastError ? String(lastError) : null;
       row.completedAt = String(completedAt);
       row.updatedAt = String(updatedAt);
       return changed(1);
     }
     if (q.includes("set status = 'queued'")) {
-      const [resultJson, availableAt, updatedAt, jobId] = this.bindings;
+      const [resultJson, availableAt, lastError, updatedAt, jobId] = this.bindings;
       const row = this.db.rows.get(String(jobId));
       if (!row) return changed(0);
       row.status = "queued";
       row.result = JSON.parse(String(resultJson));
       row.availableAt = availableAt ? String(availableAt) : null;
+      row.lastError = lastError ? String(lastError) : null;
       row.updatedAt = String(updatedAt);
       return changed(1);
     }
@@ -158,7 +203,14 @@ function toDbRow(row: JobRecord): Record<string, unknown> {
     status: row.status,
     payloadJson: JSON.stringify(row.payload),
     resultJson: row.result === null ? null : JSON.stringify(row.result),
+    orgId: row.orgId,
+    siteId: row.siteId,
+    metadataJson: JSON.stringify(row.metadata),
+    parentJobId: row.parentJobId,
     lockKey: row.lockKey,
+    concurrencyKey: row.concurrencyKey,
+    concurrencyLimit: row.concurrencyLimit,
+    enqueuePolicy: row.enqueuePolicy,
     attemptCount: row.attemptCount,
     maxAttempts: row.maxAttempts,
     availableAt: row.availableAt,

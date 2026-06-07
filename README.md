@@ -15,7 +15,7 @@ The first release focuses on common infrastructure repeated across Q32 apps:
 - HTTP JSON/error helpers
 - D1-like database types and migration runner
 - encoding helpers
-- D1-backed jobs
+- durable D1-backed jobs, child orchestration, queue publishers, and pipeline managers
 - `ops_events`
 - Postgres migration helpers
 - R2 JSON artifacts
@@ -59,4 +59,4 @@ import {
 } from "@q32/core";
 ```
 
-See [docs/evaluation.md](docs/evaluation.md) for the project-inventory replacement matrix.
+See [docs/evaluation.md](docs/evaluation.md) for the project-inventory replacement matrix and [docs/jobs.md](docs/jobs.md) for the shared jobs model.
