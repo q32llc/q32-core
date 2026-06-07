@@ -14,6 +14,7 @@ export * from "./mcp.js";
 export * from "./oauth.js";
 export * from "./ops-events.js";
 export * from "./pg.js";
+export * from "./pg-kysely.js";
 export * from "./r2-json.js";
 export * from "./rate-limit.js";
 export * from "./seo.js";

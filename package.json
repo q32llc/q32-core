@@ -1,6 +1,6 @@
 {
   "name": "@q32/core",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Shared TypeScript primitives for Q32 Cloudflare Worker projects.",
   "license": "MIT",
   "type": "module",
@@ -89,6 +89,10 @@
       "types": "./dist/pg.d.ts",
       "default": "./dist/pg.js"
     },
+    "./pg-kysely": {
+      "types": "./dist/pg-kysely.d.ts",
+      "default": "./dist/pg-kysely.js"
+    },
     "./r2-json": {
       "types": "./dist/r2-json.d.ts",
       "default": "./dist/r2-json.js"
@@ -134,7 +138,17 @@
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
   },
+  "dependencies": {
+    "kysely": "^0.29.2",
+    "kysely-postgres-js": "^3.0.0",
+    "postgres": "^3.4.9"
+  },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "kysely": "^0.29.2",
+    "kysely-postgres-js": "^3.0.0",
+    "postgres": "^3.4.9"
   }
 }
