@@ -14,6 +14,7 @@ The first release focuses on common infrastructure repeated across Q32 apps:
 - hash and HMAC helpers
 - HTTP JSON/error helpers
 - D1-like database types and migration runner
+- encoding helpers
 - D1-backed jobs
 - `ops_events`
 - Postgres migration helpers

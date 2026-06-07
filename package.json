@@ -1,6 +1,6 @@
 {
   "name": "@q32/core",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Shared TypeScript primitives for Q32 Cloudflare Worker projects.",
   "license": "MIT",
   "type": "module",
@@ -48,6 +48,10 @@
     "./email": {
       "types": "./dist/email.d.ts",
       "default": "./dist/email.js"
+    },
+    "./encoding": {
+      "types": "./dist/encoding.d.ts",
+      "default": "./dist/encoding.js"
     },
     "./env": {
       "types": "./dist/env.d.ts",

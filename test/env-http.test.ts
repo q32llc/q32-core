@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { appUrl, optionalBoolean, requiredBinding, requiredString, requiredUrl } from "../src/env.js";
-import { errorResponse, HttpError, jsonResponse, readJson, requireAdminToken, requireBearerToken } from "../src/http.js";
+import { absoluteUrl, defaultFetch, errorResponse, escapeHtml, HttpError, jsonResponse, readJson, readResponseExcerpt, requireAdminToken, requireBearerToken } from "../src/http.js";
 
 describe("env helpers", () => {
   it("reads required strings and normalized app urls", () => {
@@ -44,5 +44,12 @@ describe("http helpers", () => {
     await expect(errorResponse(new Error("boom")).json()).resolves.toEqual({
       error: { code: "internal_error", message: "boom" },
     });
+  });
+
+  it("provides Relin-compatible HTTP helpers", async () => {
+    expect(absoluteUrl("https://example.com/", "path")).toBe("https://example.com/path");
+    expect(escapeHtml(`<a href="x">it's</a>`)).toBe("&lt;a href=&quot;x&quot;&gt;it&#039;s&lt;/a&gt;");
+    await expect(readResponseExcerpt(new Response("abcdef"), 3)).resolves.toBe("abc");
+    expect(typeof defaultFetch).toBe("function");
   });
 });

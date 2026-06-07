@@ -24,6 +24,24 @@ export async function signSession<T>(payload: T, secret: string, options: Signed
   return `${encoded}.${signature}`;
 }
 
+export async function createSignedPayload(payload: string, secret: string): Promise<string> {
+  const encodedPayload = toBase64Url(payload);
+  const signature = await hmacSha256(encodedPayload, secret);
+  return `${encodedPayload}.${signature}`;
+}
+
+export async function verifySignedPayload(
+  token: string | null | undefined,
+  secret: string,
+): Promise<string | null> {
+  if (!token) return null;
+  const [encodedPayload, providedSignature] = token.split(".");
+  if (!encodedPayload || !providedSignature) return null;
+  const expectedSignature = await hmacSha256(encodedPayload, secret);
+  if (!constantTimeEqual(expectedSignature, providedSignature)) return null;
+  return new TextDecoder().decode(fromBase64Url(encodedPayload));
+}
+
 export async function verifySession<T>(token: string | null | undefined, secret: string): Promise<T | null> {
   if (!token || !secret) return null;
   const [encoded, signature] = token.split(".");

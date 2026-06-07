@@ -4,6 +4,7 @@ export * from "./billing.js";
 export * from "./cloudflare.js";
 export * from "./crypto.js";
 export * from "./d1.js";
+export * from "./encoding.js";
 export * from "./email.js";
 export * from "./env.js";
 export * from "./http.js";

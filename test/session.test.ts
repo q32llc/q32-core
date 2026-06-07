@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expiredSessionCookie, sessionCookie, signSession, verifySession } from "../src/session.js";
+import { createSignedPayload, expiredSessionCookie, sessionCookie, signSession, verifySession, verifySignedPayload } from "../src/session.js";
 
 describe("signed sessions", () => {
   it("round-trips a signed payload", async () => {
@@ -24,5 +24,12 @@ describe("signed sessions", () => {
   it("formats session cookies", () => {
     expect(sessionCookie("sid", "abc", { maxAgeSeconds: 1, secure: true })).toContain("Secure");
     expect(expiredSessionCookie("sid")).toContain("Max-Age=0");
+  });
+
+  it("supports raw signed payloads without changing payload shape", async () => {
+    const token = await createSignedPayload("plain payload", "secret");
+    await expect(verifySignedPayload(token, "secret")).resolves.toBe("plain payload");
+    await expect(verifySignedPayload(token, "wrong")).resolves.toBeNull();
+    await expect(verifySignedPayload("bad", "secret")).resolves.toBeNull();
   });
 });

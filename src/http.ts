@@ -2,6 +2,10 @@ export type JsonResponseInit = ResponseInit & {
   pretty?: boolean;
 };
 
+export type FetchLike = typeof fetch;
+
+export const defaultFetch: FetchLike = (input, init) => fetch(input, init);
+
 export class HttpError extends Error {
   constructor(
     public readonly status: number,
@@ -53,4 +57,22 @@ export function requireAdminToken(request: Request, expected: string | undefined
   if (!expected) throw new HttpError(500, "Admin token is not configured.", "admin_token_not_configured");
   const provided = request.headers.get("x-admin-token") ?? requireBearerToken(request);
   if (provided !== expected) throw new HttpError(403, "Invalid admin token.", "invalid_admin_token");
+}
+
+export function absoluteUrl(appUrl: string, path: string): string {
+  return `${appUrl.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export function escapeHtml(value: string | null | undefined): string {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+export async function readResponseExcerpt(response: Response, maxLength = 800): Promise<string> {
+  const text = await response.text().catch(() => "");
+  return text.slice(0, maxLength);
 }
