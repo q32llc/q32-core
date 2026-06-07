@@ -67,13 +67,15 @@ describe("MCP OAuth repository helpers", () => {
       {
         accessTokenTtlSeconds: 10,
         refreshTokenTtlSeconds: 20,
+        createAccessToken: () => "mcpat_custom",
+        createRefreshToken: () => "mcprt_custom",
         now: () => 100,
       },
     );
 
     expect(issued.tokenId).toMatch(/^mcptok_/);
-    expect(issued.tokens.access_token).toMatch(/^mcpat_/);
-    expect(issued.tokens.refresh_token).toMatch(/^mcprt_/);
+    expect(issued.tokens.access_token).toBe("mcpat_custom");
+    expect(issued.tokens.refresh_token).toBe("mcprt_custom");
     expect(issued.accessExpiresAt).toBe(110);
     expect(issued.refreshExpiresAt).toBe(120);
     expect(db.lastQuery).toContain("mcp_oauth_tokens");

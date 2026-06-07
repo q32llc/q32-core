@@ -159,6 +159,8 @@ export type McpIssuedTokenSet = {
 export type McpOAuthTokenOptions = {
   accessTokenTtlSeconds?: number;
   refreshTokenTtlSeconds?: number;
+  createAccessToken?: () => string;
+  createRefreshToken?: () => string;
   now?: () => number;
 };
 
@@ -629,8 +631,8 @@ export async function issueMcpOAuthTokenSet(
   },
   options: McpOAuthTokenOptions = {},
 ): Promise<McpIssuedTokenSet> {
-  const accessToken = `${createToken("mcpat")}.${crypto.randomUUID().replace(/-/g, "")}`;
-  const refreshToken = `${createToken("mcprt")}.${crypto.randomUUID().replace(/-/g, "")}`;
+  const accessToken = options.createAccessToken?.() ?? `${createToken("mcpat")}.${crypto.randomUUID().replace(/-/g, "")}`;
+  const refreshToken = options.createRefreshToken?.() ?? `${createToken("mcprt")}.${crypto.randomUUID().replace(/-/g, "")}`;
   const issuedAt = options.now?.() ?? nowEpochSeconds();
   const accessExpiresAt = issuedAt + (options.accessTokenTtlSeconds ?? DEFAULT_ACCESS_TOKEN_TTL_SECONDS);
   const refreshExpiresAt = issuedAt + (options.refreshTokenTtlSeconds ?? DEFAULT_REFRESH_TOKEN_TTL_SECONDS);
