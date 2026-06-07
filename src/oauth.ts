@@ -31,12 +31,25 @@ export function oauthAuthorizationServerMetadata(options: OAuthMetadataOptions):
   };
 }
 
-export function oauthProtectedResourceMetadata(resource: string, authorizationServer: string, scopes?: string[]): Record<string, unknown> {
+export type OAuthProtectedResourceMetadataOptions = {
+  scopes?: string[];
+  resourceName?: string;
+  resourceDocumentation?: string;
+};
+
+export function oauthProtectedResourceMetadata(
+  resource: string,
+  authorizationServer: string,
+  scopesOrOptions?: string[] | OAuthProtectedResourceMetadataOptions,
+): Record<string, unknown> {
+  const options = Array.isArray(scopesOrOptions) ? { scopes: scopesOrOptions } : (scopesOrOptions ?? {});
   return {
     resource,
     authorization_servers: [authorizationServer.replace(/\/$/, "")],
-    scopes_supported: scopes ?? ["mcp:read", "mcp:write"],
+    scopes_supported: options.scopes ?? ["mcp:read", "mcp:write"],
     bearer_methods_supported: ["header"],
+    ...(options.resourceName ? { resource_name: options.resourceName } : {}),
+    ...(options.resourceDocumentation ? { resource_documentation: options.resourceDocumentation } : {}),
   };
 }
 

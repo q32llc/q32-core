@@ -17,6 +17,7 @@ import {
   mcpToolsFromApiRegistry,
   mcpWellKnownServerMetadata,
 } from "../src/mcp.js";
+import { oauthProtectedResourceMetadata } from "../src/oauth.js";
 
 describe("api registry", () => {
   const schema = {
@@ -191,5 +192,22 @@ describe("api registry", () => {
     expect(mcpBearerChallenge({ origin: "https://app.test/" })).toBe(
       'Bearer error="Unauthorized", error_description="Unauthorized", resource_metadata="https://app.test/.well-known/oauth-protected-resource/mcp"',
     );
+  });
+
+  it("builds OAuth protected-resource metadata with optional display fields", () => {
+    expect(
+      oauthProtectedResourceMetadata("https://app.test/mcp", "https://app.test/", {
+        scopes: ["mcp:read"],
+        resourceName: "Widget MCP",
+        resourceDocumentation: "https://app.test/docs/mcp",
+      }),
+    ).toEqual({
+      resource: "https://app.test/mcp",
+      authorization_servers: ["https://app.test"],
+      scopes_supported: ["mcp:read"],
+      bearer_methods_supported: ["header"],
+      resource_name: "Widget MCP",
+      resource_documentation: "https://app.test/docs/mcp",
+    });
   });
 });
