@@ -268,10 +268,13 @@ export type ApiCatalogService = {
   anchor: string;
   serviceDesc?: string;
   serviceDescType?: string;
+  serviceDescTitle?: string;
   serviceDoc?: string;
   serviceDocType?: string;
+  serviceDocTitle?: string;
   status?: string;
   statusType?: string;
+  statusTitle?: string;
 };
 
 export function apiCatalogLinkset(services: ApiCatalogService[]): { linkset: Array<Record<string, unknown>> } {
@@ -284,6 +287,7 @@ export function apiCatalogLinkset(services: ApiCatalogService[]): { linkset: Arr
               {
                 href: service.serviceDesc,
                 type: service.serviceDescType ?? "application/json",
+                ...(service.serviceDescTitle ? { title: service.serviceDescTitle } : {}),
               },
             ],
           }
@@ -294,6 +298,7 @@ export function apiCatalogLinkset(services: ApiCatalogService[]): { linkset: Arr
               {
                 href: service.serviceDoc,
                 type: service.serviceDocType ?? "text/html",
+                ...(service.serviceDocTitle ? { title: service.serviceDocTitle } : {}),
               },
             ],
           }
@@ -304,6 +309,7 @@ export function apiCatalogLinkset(services: ApiCatalogService[]): { linkset: Arr
               {
                 href: service.status,
                 type: service.statusType ?? "application/json",
+                ...(service.statusTitle ? { title: service.statusTitle } : {}),
               },
             ],
           }
@@ -332,9 +338,11 @@ export type AgentSkill = {
   sha256?: string;
 };
 
-export function agentSkillsIndex(skills: AgentSkill[]): Record<string, unknown> {
+export function agentSkillsIndex(skills: readonly AgentSkill[], options: { schema?: string } = {}): Record<string, unknown> {
   return {
-    $schema: "https://raw.githubusercontent.com/cloudflare/agent-skills-discovery-rfc/main/schema/v0.2.0/index.schema.json",
+    $schema:
+      options.schema ??
+      "https://raw.githubusercontent.com/cloudflare/agent-skills-discovery-rfc/main/schema/v0.2.0/index.schema.json",
     skills,
   };
 }

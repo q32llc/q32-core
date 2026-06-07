@@ -112,8 +112,11 @@ describe("api registry", () => {
         {
           anchor: "https://app.test/api/v1",
           serviceDesc: "https://app.test/api/v1/openapi.json",
+          serviceDescTitle: "Widget OpenAPI",
           serviceDoc: "https://app.test/docs/api",
+          serviceDocTitle: "Widget Docs",
           status: "https://app.test/health",
+          statusTitle: "Widget Health",
         },
         {
           anchor: "https://app.test/mcp",
@@ -125,8 +128,9 @@ describe("api registry", () => {
       linkset: [
         {
           anchor: "https://app.test/api/v1",
-          "service-desc": [{ href: "https://app.test/api/v1/openapi.json" }],
-          status: [{ href: "https://app.test/health" }],
+          "service-desc": [{ href: "https://app.test/api/v1/openapi.json", title: "Widget OpenAPI" }],
+          "service-doc": [{ href: "https://app.test/docs/api", title: "Widget Docs" }],
+          status: [{ href: "https://app.test/health", title: "Widget Health" }],
         },
         {
           anchor: "https://app.test/mcp",
@@ -150,8 +154,9 @@ describe("api registry", () => {
           url: "https://app.test/mcp",
           sha256: "a".repeat(64),
         },
-      ]),
+      ], { schema: "https://agentskills.io/schemas/agent-skills-index-v0.2.0.json" }),
     ).toMatchObject({
+      $schema: "https://agentskills.io/schemas/agent-skills-index-v0.2.0.json",
       skills: [{ name: "app-mcp", type: "mcp", url: "https://app.test/mcp" }],
     });
   });
