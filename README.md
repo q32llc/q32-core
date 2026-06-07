@@ -4,15 +4,21 @@ Shared TypeScript primitives for Q32 Cloudflare Worker projects.
 
 The first release focuses on common infrastructure repeated across Q32 apps:
 
+- AI provider contracts and JSON extraction helpers
+- API operation registries
+- billing plan/status primitives
+- Cloudflare binding guards
 - environment parsing
+- email provider contracts and address helpers
 - IDs, tokens, and signed session cookies
 - HTTP JSON/error helpers
 - D1-like database types and migration runner
 - D1-backed jobs
 - `ops_events`
+- Postgres migration helpers
 - R2 JSON artifacts
+- SEO sitemap, robots, and metadata helpers
 - OAuth/MCP discovery metadata
-- API operation registries
 - D1 rate limiting
 - WebCrypto JSON encryption
 
@@ -44,6 +50,7 @@ import {
   createId,
   jsonResponse,
   oauthAuthorizationServerMetadata,
+  renderSitemapXml,
   recordOpsEvent,
   signSession,
 } from "@q32/core";

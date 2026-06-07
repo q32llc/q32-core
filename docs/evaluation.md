@@ -6,16 +6,22 @@ This package was seeded from repeated infrastructure found across Erik/Q32 TypeS
 
 | Common pattern | Current module | Suitable replacement scope |
 | --- | --- | --- |
+| AI JSON helper conventions | `ai` | Standardize model request/response contracts and JSON extraction around official provider SDK calls. |
 | Typed environment helpers and app URL fallback | `env` | Replace local `getAppUrl`, required env, optional boolean, and binding guard helpers. |
+| Cloudflare binding checks | `cloudflare` | Replace repeated `DB`, `R2`, and Queue binding guard code in Workers. |
 | JSON responses, bearer/admin token checks, request body parsing | `http` | Replace repeated Worker/Hono-adjacent HTTP utility functions. |
 | Prefixed IDs, random tokens, base64url, SHA-256 | `ids` | Replace local `createId`, token, digest-key, and hash helpers. |
 | Signed session tokens and cookies | `session` | Replace small HMAC session implementations where full auth frameworks are unnecessary. |
 | Credential or provider-secret encryption | `crypto` | Replace local AES-GCM JSON encryption helpers backed by WebCrypto. |
 | D1-like database typing and explicit migrations | `d1` | Replace duplicated `D1DatabaseLike` types and simple migration runners. |
+| Postgres migration and JSON helpers | `pg` | Replace small pg migration scripts while still using official `pg` or `postgres` clients in apps. |
 | Background job table behavior | `jobs` | Replace D1 job enqueue/claim/run/requeue/succeed/fail loops in small Worker apps. |
 | Operator event recording and listing | `ops-events` | Replace repeated `ops_events` insert/list helpers. |
 | D1 fixed-window rate limits | `rate-limit` | Replace lead, login, public API, and admin throttle tables. |
 | R2 JSON payload/artifact storage | `r2-json` | Replace raw provider payload and generated artifact JSON storage helpers. |
+| SEO/static output conventions | `seo` | Replace ad hoc sitemap, robots, canonical, Open Graph, and noindex tag helpers. |
+| Email provider boundary | `email` | Standardize provider-independent send input/result shapes and address helpers. |
+| Billing plan/status checks | `billing` | Replace local plan rank and active subscription status helpers around Stripe-backed apps. |
 | OAuth/MCP metadata | `oauth`, `mcp` | Replace repeated discovery metadata and API-to-tool descriptors; full OAuth token stores remain app-specific for now. |
 | API operation registries | `api` | Replace local operation registries used for OpenAPI, admin APIs, and MCP exposure. |
 
@@ -41,8 +47,10 @@ The package intentionally does not yet replace:
 - Stripe billing repositories
 - Postgres job runners and migration orchestration
 - email provider clients
-- OpenAI/provider retry and structured-output adapters
 - Mantine app shells or SEO page components
+- OpenAI/provider retry adapters beyond the shared request/result contracts
+- Stripe webhook verification or Checkout/session creation, which should remain on the official Stripe SDK
+- Mantine app shells or React components
 
 Those should be added only after extracting one or two real migrations from existing apps so the shared API follows production usage rather than speculation.
 
@@ -56,3 +64,10 @@ Current local gates:
 - `pnpm pack --dry-run`
 
 Coverage threshold is enforced in `vitest.config.ts` and CI runs the same gates.
+
+Current coverage after the expanded common-module pass:
+
+- Statements: 89.26%
+- Branches: 75.25%
+- Functions: 96.66%
+- Lines: 95.15%

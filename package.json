@@ -25,17 +25,41 @@
       "types": "./dist/api.d.ts",
       "default": "./dist/api.js"
     },
+    "./ai": {
+      "types": "./dist/ai.d.ts",
+      "default": "./dist/ai.js"
+    },
+    "./billing": {
+      "types": "./dist/billing.d.ts",
+      "default": "./dist/billing.js"
+    },
+    "./cloudflare": {
+      "types": "./dist/cloudflare.d.ts",
+      "default": "./dist/cloudflare.js"
+    },
     "./crypto": {
       "types": "./dist/crypto.d.ts",
       "default": "./dist/crypto.js"
+    },
+    "./d1": {
+      "types": "./dist/d1.d.ts",
+      "default": "./dist/d1.js"
+    },
+    "./email": {
+      "types": "./dist/email.d.ts",
+      "default": "./dist/email.js"
+    },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "default": "./dist/env.js"
     },
     "./http": {
       "types": "./dist/http.d.ts",
       "default": "./dist/http.js"
     },
-    "./d1": {
-      "types": "./dist/d1.d.ts",
-      "default": "./dist/d1.js"
+    "./ids": {
+      "types": "./dist/ids.d.ts",
+      "default": "./dist/ids.js"
     },
     "./jobs": {
       "types": "./dist/jobs.d.ts",
@@ -53,9 +77,29 @@
       "types": "./dist/ops-events.d.ts",
       "default": "./dist/ops-events.js"
     },
+    "./pg": {
+      "types": "./dist/pg.d.ts",
+      "default": "./dist/pg.js"
+    },
+    "./r2-json": {
+      "types": "./dist/r2-json.d.ts",
+      "default": "./dist/r2-json.js"
+    },
     "./rate-limit": {
       "types": "./dist/rate-limit.d.ts",
       "default": "./dist/rate-limit.js"
+    },
+    "./seo": {
+      "types": "./dist/seo.d.ts",
+      "default": "./dist/seo.js"
+    },
+    "./session": {
+      "types": "./dist/session.d.ts",
+      "default": "./dist/session.js"
+    },
+    "./time": {
+      "types": "./dist/time.d.ts",
+      "default": "./dist/time.js"
     }
   },
   "files": [
