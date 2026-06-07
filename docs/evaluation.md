@@ -12,6 +12,7 @@ This package was seeded from repeated infrastructure found across Erik/Q32 TypeS
 | JSON responses, bearer/admin token checks, request body parsing | `http` | Replace repeated Worker/Hono-adjacent HTTP utility functions. |
 | Prefixed IDs, random tokens, base64url, SHA-256 | `ids` | Replace local `createId`, token, digest-key, and hash helpers. |
 | Signed session tokens and cookies | `session` | Replace small HMAC session implementations where full auth frameworks are unnecessary. |
+| Auth/session/MCP authorization policy | `auth` | Keep principal lookup, session verification, admin checks, OAuth authorization-code exchange, token verification, and refresh rotation independent of Hono, React Router, or any single app. |
 | Credential or provider-secret encryption | `crypto` | Replace local AES-GCM JSON encryption helpers backed by WebCrypto. |
 | D1-like database typing and explicit migrations | `d1` | Replace duplicated `D1DatabaseLike` types and simple migration runners. |
 | Postgres migration and JSON helpers | `pg` | Replace small pg migration scripts while still using official `pg` or `postgres` clients in apps. |
@@ -23,8 +24,9 @@ This package was seeded from repeated infrastructure found across Erik/Q32 TypeS
 | Email provider boundary | `email` | Standardize provider-independent send input/result shapes and address helpers. |
 | Billing plan/status checks | `billing` | Replace local plan rank and active subscription status helpers around Stripe-backed apps. |
 | Worker test helpers | `testing` | Replace small fake Queue/R2 helpers and JSON response assertions in unit tests; complements workerd/Miniflare integration tests. |
-| OAuth/MCP metadata | `oauth`, `mcp` | Replace repeated discovery metadata and API-to-tool descriptors; full OAuth token stores remain app-specific for now. |
+| OAuth/MCP metadata and storage | `oauth`, `mcp` | Replace repeated discovery metadata, API-to-tool descriptors, and configurable D1 OAuth client/code/token repositories. |
 | API operation registries | `api` | Replace local operation registries used for OpenAPI, admin APIs, and MCP exposure. |
+| Framework request adapters | `hono`, `react-router` | Translate Hono middleware and React Router loader/action requests into the same framework-neutral auth/API services. |
 
 ## Current Fit
 
@@ -37,14 +39,13 @@ Strong first replacement candidates:
 - D1 jobs in `travelerideas`, `bizsnipe`, `logtura`, and smaller domain apps.
 - signed session, ID, token, and base64url helpers in `zura`, `relin`, `getflight`, and `adgiro`.
 - API operation metadata from `bce.email` and `relin`.
-- OAuth/MCP metadata from `getflight`, `captcha`, `ipogrid`, `relin`, and `bce.email`.
+- OAuth/MCP metadata and auth/token flow from `getflight`, `captcha`, `ipogrid`, `relin`, and `bce.email`.
 
 ## Not Yet Complete
 
 The package intentionally does not yet replace:
 
-- full app account systems
-- full OAuth authorization-code and refresh-token stores
+- complete app-specific login/account repositories
 - Stripe billing repositories
 - Postgres job runners and migration orchestration
 - email provider clients

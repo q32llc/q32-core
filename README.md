@@ -6,6 +6,7 @@ The first release focuses on common infrastructure repeated across Q32 apps:
 
 - AI provider contracts and JSON extraction helpers
 - API operation registries
+- framework-neutral auth/session/MCP auth services with thin Hono and React Router adapters
 - billing plan/status primitives
 - Cloudflare binding guards
 - environment parsing
@@ -50,9 +51,12 @@ import {
   D1JobStore,
   D1_JOBS_SCHEMA,
   appUrl,
+  createAuthSystem,
   createId,
+  honoAuthMiddleware,
   jsonResponse,
   oauthAuthorizationServerMetadata,
+  reactRouterAuthContext,
   renderSitemapXml,
   recordOpsEvent,
   signSession,
@@ -60,3 +64,7 @@ import {
 ```
 
 See [docs/evaluation.md](docs/evaluation.md) for the project-inventory replacement matrix and [docs/jobs.md](docs/jobs.md) for the shared jobs model.
+
+Framework adapters are deliberately thin. Put policy and persistence in `auth`,
+`jobs`, `ops-events`, and `api`; use `hono` or `react-router` only to translate a
+framework request/response shape into those shared services.

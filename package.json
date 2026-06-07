@@ -1,6 +1,6 @@
 {
   "name": "@q32/core",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "description": "Shared TypeScript primitives for Q32 Cloudflare Worker projects.",
   "license": "MIT",
   "type": "module",
@@ -28,6 +28,10 @@
     "./ai": {
       "types": "./dist/ai.d.ts",
       "default": "./dist/ai.js"
+    },
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "default": "./dist/auth.js"
     },
     "./billing": {
       "types": "./dist/billing.d.ts",
@@ -60,6 +64,10 @@
     "./hash": {
       "types": "./dist/hash.d.ts",
       "default": "./dist/hash.js"
+    },
+    "./hono": {
+      "types": "./dist/hono.d.ts",
+      "default": "./dist/hono.js"
     },
     "./http": {
       "types": "./dist/http.d.ts",
@@ -100,6 +108,10 @@
     "./rate-limit": {
       "types": "./dist/rate-limit.d.ts",
       "default": "./dist/rate-limit.js"
+    },
+    "./react-router": {
+      "types": "./dist/react-router.d.ts",
+      "default": "./dist/react-router.js"
     },
     "./seo": {
       "types": "./dist/seo.d.ts",
