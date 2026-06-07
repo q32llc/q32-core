@@ -11,7 +11,7 @@ Objective: working Q32 core libraries, with the common libraries discussed in th
 | Strong TypeScript types | `pnpm typecheck` succeeds under `strict` TypeScript with generated declarations. |
 | Good test coverage | `pnpm test:coverage` succeeds with enforced thresholds; latest local coverage is 89.26% statements, 75.25% branches, 96.66% functions, 95.15% lines. |
 | Working CI | GitHub Actions CI passes on `main` and runs install, typecheck, coverage, build, and pack dry run. |
-| Common code surfaces | Modules exist for `api`, `ai`, `billing`, `cloudflare`, `crypto`, `d1`, `email`, `env`, `http`, `ids`, `jobs`, `mcp`, `oauth`, `ops-events`, `pg`, `r2-json`, `rate-limit`, `seo`, `session`, and `time`. |
+| Common code surfaces | Modules exist for `api`, `ai`, `billing`, `cloudflare`, `crypto`, `d1`, `email`, `env`, `http`, `ids`, `jobs`, `mcp`, `oauth`, `ops-events`, `pg`, `r2-json`, `rate-limit`, `seo`, `session`, `testing`, and `time`. |
 | Suitability evaluation | `docs/evaluation.md` maps modules to common patterns found in existing projects and identifies first replacement candidates. |
 | Consumer install smoke | Packed tarball was installed into a clean temp project and imported successfully from `@q32/core`. |
 

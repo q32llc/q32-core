@@ -17,4 +17,5 @@ export * from "./r2-json.js";
 export * from "./rate-limit.js";
 export * from "./seo.js";
 export * from "./session.js";
+export * from "./testing.js";
 export * from "./time.js";

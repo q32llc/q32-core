@@ -18,6 +18,7 @@ The first release focuses on common infrastructure repeated across Q32 apps:
 - Postgres migration helpers
 - R2 JSON artifacts
 - SEO sitemap, robots, and metadata helpers
+- test helpers for Worker queues, R2, and JSON responses
 - OAuth/MCP discovery metadata
 - D1 rate limiting
 - WebCrypto JSON encryption

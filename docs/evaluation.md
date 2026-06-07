@@ -22,6 +22,7 @@ This package was seeded from repeated infrastructure found across Erik/Q32 TypeS
 | SEO/static output conventions | `seo` | Replace ad hoc sitemap, robots, canonical, Open Graph, and noindex tag helpers. |
 | Email provider boundary | `email` | Standardize provider-independent send input/result shapes and address helpers. |
 | Billing plan/status checks | `billing` | Replace local plan rank and active subscription status helpers around Stripe-backed apps. |
+| Worker test helpers | `testing` | Replace small fake Queue/R2 helpers and JSON response assertions in unit tests; complements workerd/Miniflare integration tests. |
 | OAuth/MCP metadata | `oauth`, `mcp` | Replace repeated discovery metadata and API-to-tool descriptors; full OAuth token stores remain app-specific for now. |
 | API operation registries | `api` | Replace local operation registries used for OpenAPI, admin APIs, and MCP exposure. |
 
