@@ -84,7 +84,7 @@ export type OAuthClientInformation = {
   client_id: string;
   client_secret?: string;
   client_name?: string;
-  redirect_uris?: string[];
+  redirect_uris: string[];
   scope?: string;
   grant_types?: string[];
   response_types?: string[];
@@ -100,11 +100,13 @@ export type OAuthClientInformation = {
   client_secret_expires_at?: number;
 };
 
-export type OAuthClientRegistration = Omit<OAuthClientInformation, "client_id" | "client_id_issued_at">;
+export type OAuthClientRegistration = Omit<OAuthClientInformation, "client_id" | "client_id_issued_at" | "redirect_uris"> & {
+  redirect_uris?: string[];
+};
 
 export type OAuthTokens = {
   access_token: string;
-  token_type: "Bearer";
+  token_type: string;
   expires_in: number;
   refresh_token?: string;
   scope?: string;
