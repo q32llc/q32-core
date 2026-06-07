@@ -6,6 +6,7 @@ describe("env helpers", () => {
   it("reads required strings and normalized app urls", () => {
     expect(requiredString({ APP_URL: "x" }, "APP_URL")).toBe("x");
     expect(appUrl({ PUBLIC_APP_URL: "https://example.com/" })).toBe("https://example.com");
+    expect(appUrl({ PUBLIC_APP_URL: "https://public.example.com/" }, { keys: ["APP_URL", "BASE_URL"] })).toBe("http://localhost:8787");
     expect(optionalBoolean({ FEATURE: "yes" }, "FEATURE")).toBe(true);
     expect(requiredUrl({ URL: "https://example.com/path/" }, "URL")).toBe("https://example.com/path");
     expect(requiredBinding<{ id: string }>({ DB: { id: "db" } }, "DB")).toEqual({ id: "db" });

@@ -21,15 +21,11 @@ export function randomBase36(length: number): string {
 }
 
 export function createBase36Id(prefix: string, length = 20): string {
-  const cleanPrefix = prefix.trim();
-  if (!cleanPrefix) throw new Error("ID prefix is required.");
-  return `${cleanPrefix}_${randomBase36(length)}`;
+  return `${prefix}_${randomBase36(length)}`;
 }
 
 export function createBase36Token(prefix: string, length = 40): string {
-  const cleanPrefix = prefix.trim();
-  if (!cleanPrefix) throw new Error("Token prefix is required.");
-  return `${cleanPrefix}_${randomBase36(length)}`;
+  return `${prefix}_${randomBase36(length)}`;
 }
 
 export function randomBase64Url(bytes = DEFAULT_TOKEN_BYTES): string {

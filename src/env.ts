@@ -47,7 +47,17 @@ export function requiredBinding<T>(env: EnvSource, key: string): T {
   return value as T;
 }
 
-export function appUrl(env: EnvSource, fallback = "http://localhost:8787"): string {
-  const value = optionalString(env, "APP_URL") ?? optionalString(env, "BASE_URL") ?? optionalString(env, "PUBLIC_APP_URL") ?? fallback;
+export type AppUrlOptions = {
+  fallback?: string;
+  keys?: string[];
+};
+
+export function appUrl(
+  env: EnvSource,
+  fallbackOrOptions: string | AppUrlOptions = "http://localhost:8787",
+): string {
+  const options = typeof fallbackOrOptions === "string" ? { fallback: fallbackOrOptions } : fallbackOrOptions;
+  const keys = options.keys ?? ["APP_URL", "BASE_URL", "PUBLIC_APP_URL"];
+  const value = keys.map((key) => optionalString(env, key)).find((candidate) => candidate !== undefined) ?? options.fallback ?? "http://localhost:8787";
   return value.replace(/\/$/, "");
 }

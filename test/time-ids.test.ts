@@ -21,6 +21,7 @@ describe("id helpers", () => {
     expect(new TextDecoder().decode(fromBase64Url(encoded))).toBe("hello");
     expect(createBase36Id("evt")).toMatch(/^evt_[0-9a-z]{20}$/);
     expect(createBase36Token("tok")).toMatch(/^tok_[0-9a-z]{40}$/);
+    expect(createBase36Id(" raw ", 1)).toMatch(/^ raw _[0-9a-z]$/);
   });
 
   it("requires non-empty prefixes", () => {
