@@ -68,6 +68,10 @@ import {
 
 See [docs/evaluation.md](docs/evaluation.md) for the project-inventory replacement matrix and [docs/jobs.md](docs/jobs.md) for the shared jobs model.
 
+The root `@q32/core` export is kept dependency-light. Optional integrations that
+need peer packages should be imported from their subpaths, for example
+`@q32/core/pg-kysely` for Kysely/Postgres helpers.
+
 Framework adapters are deliberately thin. Put policy and persistence in `auth`,
 `jobs`, `ops-events`, and `api`; use `hono` or `react-router` only to translate a
 framework request/response shape into those shared services.
