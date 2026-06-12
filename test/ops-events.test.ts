@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  ADGIRO_OPS_EVENTS_COLUMNS,
+  REQUEST_JOB_OPS_EVENT_COLUMNS,
   buildOpsEventInsert,
-  DIRT_SIGNAL_OPS_EVENTS_COLUMNS,
-  GRAPHILIZE_GRAPH_EVENTS_COLUMNS,
+  RUN_SCOPED_OPS_EVENT_COLUMNS,
+  GRAPH_SCOPE_EVENT_COLUMNS,
   normalizeOpsEvent,
   recordD1OpsEvent,
-  RELIN_OPERATIONAL_EVENTS_COLUMNS,
+  OPERATIONAL_EVENT_COLUMNS,
 } from "../src/ops-events.js";
 import type { D1DatabaseLike, D1PreparedStatementLike, D1StatementResult } from "../src/d1.js";
 
@@ -41,11 +41,11 @@ describe("ops event helpers", () => {
     expect(event.eventId).toMatch(/^opsevt_/);
   });
 
-  it("builds mapped Postgres inserts for Graphilize graph_events", () => {
+  it("builds mapped Postgres inserts for graph-scoped events", () => {
     const statement = buildOpsEventInsert(
       {
         tableName: "graph_events",
-        columns: GRAPHILIZE_GRAPH_EVENTS_COLUMNS,
+        columns: GRAPH_SCOPE_EVENT_COLUMNS,
       },
       {
         eventId: "event_1",
@@ -55,7 +55,7 @@ describe("ops event helpers", () => {
         scopeId: "graph_1",
         targetType: "job",
         targetId: "job_1",
-        payload: { queueName: "graphilize-ingest" },
+        payload: { queueName: "sample-ingest" },
         metrics: { queued: 1 },
         metadata: { source: "test" },
         occurredAt: "2026-01-01T00:00:00.000Z",
@@ -75,18 +75,18 @@ describe("ops event helpers", () => {
       "job_1",
       "ok",
       null,
-      '{"queueName":"graphilize-ingest"}',
+      '{"queueName":"sample-ingest"}',
       '{"queued":1}',
       '{"source":"test"}',
       "2026-01-01T00:00:00.000Z",
     ]);
   });
 
-  it("builds mapped Postgres inserts for DirtSignal ops_events", () => {
+  it("builds mapped Postgres inserts for custom ops_events", () => {
     const statement = buildOpsEventInsert(
       {
         tableName: "ops_events",
-        columns: DIRT_SIGNAL_OPS_EVENTS_COLUMNS,
+        columns: RUN_SCOPED_OPS_EVENT_COLUMNS,
         conflictTarget: ["event_id"],
       },
       {
@@ -123,7 +123,7 @@ describe("ops event helpers", () => {
     ]);
   });
 
-  it("builds mapped D1 inserts for Relin operational_events", async () => {
+  it("builds mapped D1 inserts for operational events", async () => {
     const db = new MemoryD1();
     const event = await recordD1OpsEvent(
       db,
@@ -140,7 +140,7 @@ describe("ops event helpers", () => {
       },
       {
         tableName: "operational_events",
-        columns: RELIN_OPERATIONAL_EVENTS_COLUMNS,
+        columns: OPERATIONAL_EVENT_COLUMNS,
         normalize: { idPrefix: "op" },
       },
     );
@@ -172,7 +172,7 @@ describe("ops event helpers", () => {
       },
       {
         tableName: "operational_events",
-        columns: RELIN_OPERATIONAL_EVENTS_COLUMNS,
+        columns: OPERATIONAL_EVENT_COLUMNS,
         normalize: { idPrefix: "op" },
       },
     );
@@ -211,7 +211,7 @@ describe("ops event helpers", () => {
       },
       {
         tableName: "operational_events",
-        columns: RELIN_OPERATIONAL_EVENTS_COLUMNS,
+        columns: OPERATIONAL_EVENT_COLUMNS,
         normalize: { idPrefix: "op" },
       },
     );
@@ -220,7 +220,7 @@ describe("ops event helpers", () => {
     expect(db.lastValues[0]).toBe(event.eventId);
   });
 
-  it("builds mapped D1 inserts for Adgiro request and job ops_events", async () => {
+  it("builds mapped D1 inserts for custom request and job ops_events", async () => {
     const db = new MemoryD1();
     await recordD1OpsEvent(
       db,
@@ -230,7 +230,7 @@ describe("ops event helpers", () => {
         severity: "error",
         requestMethod: "POST",
         requestPath: "/api/sync",
-        requestUrl: "https://adgiro.test/api/sync",
+        requestUrl: "https://example.test/api/sync",
         statusCode: 502,
         actorId: "user_1",
         orgId: "org_1",
@@ -242,7 +242,7 @@ describe("ops event helpers", () => {
       },
       {
         tableName: "ops_events",
-        columns: ADGIRO_OPS_EVENTS_COLUMNS,
+        columns: REQUEST_JOB_OPS_EVENT_COLUMNS,
       },
     );
 
@@ -253,7 +253,7 @@ describe("ops event helpers", () => {
       "provider.sync.failed",
       "POST",
       "/api/sync",
-      "https://adgiro.test/api/sync",
+      "https://example.test/api/sync",
       502,
       "user_1",
       "org_1",
@@ -271,7 +271,7 @@ describe("ops event helpers", () => {
       buildOpsEventInsert(
         {
           tableName: "graph_events; drop table users",
-          columns: GRAPHILIZE_GRAPH_EVENTS_COLUMNS,
+          columns: GRAPH_SCOPE_EVENT_COLUMNS,
         },
         { eventName: "x", workflow: "test" },
       ),

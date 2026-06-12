@@ -66,7 +66,7 @@ import {
 } from "@q32/core";
 ```
 
-See [docs/evaluation.md](docs/evaluation.md) for the project-inventory replacement matrix and [docs/jobs.md](docs/jobs.md) for the shared jobs model.
+See [docs/jobs.md](docs/jobs.md) for the shared jobs model.
 
 The root `@q32/core` export is kept dependency-light. Optional integrations that
 need peer packages should be imported from their subpaths, for example

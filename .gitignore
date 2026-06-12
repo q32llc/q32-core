@@ -5,3 +5,8 @@ coverage/
 .env.*
 !.env.example
 *.log
+docs/private/
+docs/*-survey.md
+docs/*-audit.md
+docs/*commonality*.md
+docs/*evaluation*.md

@@ -337,7 +337,7 @@ describe("PostgresJobStore", () => {
     );
   });
 
-  it("supports Graphilize-style job tables without metadata/site columns", async () => {
+  it("supports custom Postgres job tables without metadata/site columns", async () => {
     const sql = new RecordingPostgresSql();
     const store = new PostgresJobStore(sql, {
       tableName: "graph_jobs",
@@ -359,7 +359,7 @@ describe("PostgresJobStore", () => {
     const job = await store.enqueue({
       jobType: "clinical_trials_import",
       orgId: "graph_1",
-      payload: { queueName: "graphilize-ingest", page: 1 },
+      payload: { queueName: "sample-ingest", page: 1 },
       maxAttempts: 4,
     });
 
@@ -367,7 +367,7 @@ describe("PostgresJobStore", () => {
       jobType: "clinical_trials_import",
       orgId: "graph_1",
       status: "queued",
-      payload: { queueName: "graphilize-ingest", page: 1 },
+      payload: { queueName: "sample-ingest", page: 1 },
       result: {},
       metadata: {},
       maxAttempts: 4,
@@ -431,7 +431,7 @@ describe("PostgresJobStore", () => {
     const sql = new RecordingPostgresSql();
     const store = new PostgresJobStore(sql, {
       tableName: "graph_jobs",
-      queueName: "graphilize-ingest",
+      queueName: "sample-ingest",
       columns: {
         orgId: "graph_id",
         siteId: null,
@@ -449,7 +449,7 @@ describe("PostgresJobStore", () => {
       jobId: "job_pg",
       orgId: "graph_1",
       siteId: null,
-      queueName: "graphilize-ingest",
+      queueName: "sample-ingest",
       jobType: "demo",
       status: "queued",
       payloadJson: "{}",

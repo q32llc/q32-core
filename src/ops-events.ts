@@ -258,7 +258,7 @@ export const DEFAULT_D1_OPS_EVENT_COLUMNS: OpsEventColumn[] = [
   { column: "payload_json", value: "payloadJson" },
 ];
 
-export const GRAPHILIZE_GRAPH_EVENTS_COLUMNS: OpsEventColumn[] = [
+export const GRAPH_SCOPE_EVENT_COLUMNS: OpsEventColumn[] = [
   { column: "event_id", value: "eventId" },
   { column: "graph_id", value: "scopeId" },
   { column: "event_name", value: "eventName" },
@@ -273,7 +273,7 @@ export const GRAPHILIZE_GRAPH_EVENTS_COLUMNS: OpsEventColumn[] = [
   { column: "occurred_at", value: "occurredAt", cast: "timestamptz" },
 ];
 
-export const DIRT_SIGNAL_OPS_EVENTS_COLUMNS: OpsEventColumn[] = [
+export const RUN_SCOPED_OPS_EVENT_COLUMNS: OpsEventColumn[] = [
   { column: "event_id", value: "eventId" },
   { column: "run_id", value: "runId" },
   { column: "event_name", value: "eventName" },
@@ -288,7 +288,7 @@ export const DIRT_SIGNAL_OPS_EVENTS_COLUMNS: OpsEventColumn[] = [
   { column: "occurred_at", value: "occurredAt", cast: "timestamptz" },
 ];
 
-export const RELIN_OPERATIONAL_EVENTS_COLUMNS: OpsEventColumn[] = [
+export const OPERATIONAL_EVENT_COLUMNS: OpsEventColumn[] = [
   { column: "operational_event_id", value: "eventId" },
   { column: "name", value: "eventName" },
   { column: "status", value: "status" },
@@ -300,7 +300,7 @@ export const RELIN_OPERATIONAL_EVENTS_COLUMNS: OpsEventColumn[] = [
   { column: "metadata_json", value: "metadataJsonOrNull" },
 ];
 
-export const ADGIRO_OPS_EVENTS_COLUMNS: OpsEventColumn[] = [
+export const REQUEST_JOB_OPS_EVENT_COLUMNS: OpsEventColumn[] = [
   { column: "ops_event_id", value: "eventId" },
   { column: "level", value: "severity" },
   { column: "event_type", value: "eventName" },
