@@ -1,6 +1,6 @@
 {
   "name": "@q32/core",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "description": "Shared TypeScript primitives for Q32 Cloudflare Worker projects.",
   "license": "MIT",
   "type": "module",
@@ -32,6 +32,10 @@
     "./auth": {
       "types": "./dist/auth.d.ts",
       "default": "./dist/auth.js"
+    },
+    "./aws": {
+      "types": "./dist/aws.d.ts",
+      "default": "./dist/aws.js"
     },
     "./billing": {
       "types": "./dist/billing.d.ts",
@@ -120,6 +124,14 @@
     "./session": {
       "types": "./dist/session.d.ts",
       "default": "./dist/session.js"
+    },
+    "./ses": {
+      "types": "./dist/ses.d.ts",
+      "default": "./dist/ses.js"
+    },
+    "./ses-sns": {
+      "types": "./dist/ses-sns.d.ts",
+      "default": "./dist/ses-sns.js"
     },
     "./testing": {
       "types": "./dist/testing.d.ts",
