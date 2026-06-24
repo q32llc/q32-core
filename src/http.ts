@@ -6,6 +6,33 @@ export type FetchLike = typeof fetch;
 
 export const defaultFetch: FetchLike = (input, init) => fetch(input, init);
 
+const COMMON_ATTACK_EXACT_PATHS = new Set([
+  "/.env",
+  "/.git/config",
+  "/xmlrpc.php",
+  "/wp-login.php",
+  "/wp-config.php",
+  "/phpinfo.php",
+  "/adminer.php",
+]);
+
+const COMMON_ATTACK_PATH_PARTS = [
+  "/.git/",
+  "/.svn/",
+  "/.hg/",
+  "/cgi-bin/",
+  "/phpmyadmin",
+  "/pma/",
+  "/vendor/phpunit/",
+  "/wordpress/",
+  "/wp-admin/",
+  "/wp-content/",
+  "/wp-includes/",
+  "/administrator/",
+  "/joomla/",
+  "/drupal/",
+];
+
 export class HttpError extends Error {
   constructor(
     public readonly status: number,
@@ -75,4 +102,28 @@ export function escapeHtml(value: string | null | undefined): string {
 export async function readResponseExcerpt(response: Response, maxLength = 800): Promise<string> {
   const text = await response.text().catch(() => "");
   return text.slice(0, maxLength);
+}
+
+function safePathname(input: Request | URL | string): string {
+  const pathname =
+    typeof input === "string"
+      ? new URL(input, "https://example.com").pathname
+      : input instanceof URL
+        ? input.pathname
+        : new URL(input.url).pathname;
+
+  try {
+    return decodeURIComponent(pathname).toLowerCase();
+  } catch {
+    return pathname.toLowerCase();
+  }
+}
+
+export function isCommonAttackProbe(input: Request | URL | string): boolean {
+  const pathname = safePathname(input);
+
+  if (COMMON_ATTACK_EXACT_PATHS.has(pathname)) return true;
+  if (pathname.endsWith(".php")) return true;
+
+  return COMMON_ATTACK_PATH_PARTS.some((part) => pathname.includes(part));
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { appUrl, optionalBoolean, requiredBinding, requiredString, requiredUrl } from "../src/env.js";
-import { absoluteUrl, defaultFetch, errorResponse, escapeHtml, HttpError, jsonResponse, readJson, readResponseExcerpt, requireAdminToken, requireBearerToken } from "../src/http.js";
+import { absoluteUrl, defaultFetch, errorResponse, escapeHtml, HttpError, isCommonAttackProbe, jsonResponse, readJson, readResponseExcerpt, requireAdminToken, requireBearerToken } from "../src/http.js";
 
 describe("env helpers", () => {
   it("reads required strings and normalized app urls", () => {
@@ -52,5 +52,21 @@ describe("http helpers", () => {
     expect(escapeHtml(`<a href="x">it's</a>`)).toBe("&lt;a href=&quot;x&quot;&gt;it&#039;s&lt;/a&gt;");
     await expect(readResponseExcerpt(new Response("abcdef"), 3)).resolves.toBe("abc");
     expect(typeof defaultFetch).toBe("function");
+  });
+
+  it("classifies common attack probes without catching ordinary 404s", () => {
+    expect(isCommonAttackProbe("/.env")).toBe(true);
+    expect(isCommonAttackProbe("/contact.php")).toBe(true);
+    expect(isCommonAttackProbe(new URL("https://example.com/wp-login.php"))).toBe(true);
+    expect(isCommonAttackProbe(new Request("https://example.com/wp-admin/install.php"))).toBe(true);
+    expect(isCommonAttackProbe("https://example.com/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php")).toBe(true);
+    expect(isCommonAttackProbe("/missing-page")).toBe(false);
+    expect(isCommonAttackProbe("/products/php-light")).toBe(false);
+  });
+
+  it("normalizes common attack probe paths", () => {
+    expect(isCommonAttackProbe("/%2Egit/config")).toBe(true);
+    expect(isCommonAttackProbe("/Wp-Content/plugins/shell.txt")).toBe(true);
+    expect(isCommonAttackProbe("/bad%zz/wp-login.php")).toBe(true);
   });
 });
