@@ -69,6 +69,16 @@ export type RawMimeMessageInput = Omit<SendEmailInput, "tags"> & {
   boundaryPrefix?: string;
 };
 
+export type ResentMimeMessageInput = {
+  rawMessage: Uint8Array | string;
+  resentFrom: EmailAddress;
+  resentTo: EmailAddress[];
+  resentSender?: EmailAddress;
+  resentDate?: Date;
+  resentMessageId?: string;
+  headers?: Record<string, string>;
+};
+
 export function buildRawMimeMessage(input: RawMimeMessageInput): string {
   const mixedBoundary = `${input.boundaryPrefix ?? "q32"}-mixed-${crypto.randomUUID()}`;
   const bodyBoundary = `${input.boundaryPrefix ?? "q32"}-body-${crypto.randomUUID()}`;
@@ -120,6 +130,24 @@ export function buildRawMimeMessage(input: RawMimeMessageInput): string {
   return parts.join("\r\n");
 }
 
+export function buildResentMimeMessage(input: ResentMimeMessageInput): string {
+  const headers = [
+    `Resent-From: ${formatEmailAddress(input.resentFrom)}`,
+    ...(input.resentSender ? [`Resent-Sender: ${formatEmailAddress(input.resentSender)}`] : []),
+    `Resent-To: ${input.resentTo.map(formatEmailAddress).join(", ")}`,
+    `Resent-Date: ${(input.resentDate ?? new Date()).toUTCString()}`,
+    `Resent-Message-ID: ${sanitizeEmailHeaderValue(input.resentMessageId ?? `<${crypto.randomUUID()}@resent.q32.email>`)}`,
+  ];
+
+  for (const [name, value] of Object.entries(input.headers ?? {})) {
+    const headerName = sanitizeHeaderName(name);
+    const headerValue = sanitizeEmailHeaderValue(value);
+    if (headerName && headerValue) headers.push(`${headerName}: ${headerValue}`);
+  }
+
+  return `${headers.join("\r\n")}\r\n${normalizeRawMessage(input.rawMessage)}`;
+}
+
 function sanitizeHeaderName(value: string): string {
   const name = value.trim();
   return /^[A-Za-z0-9-]+$/.test(name) ? name : "";
@@ -134,6 +162,11 @@ function attachmentDataToBase64(value: Uint8Array | string): string {
   let binary = "";
   for (const byte of value) binary += String.fromCharCode(byte);
   return btoa(binary);
+}
+
+function normalizeRawMessage(value: Uint8Array | string): string {
+  const text = typeof value === "string" ? value : new TextDecoder("utf-8", { fatal: false }).decode(value);
+  return text.replace(/^\uFEFF/, "").replace(/\r?\n/g, "\r\n");
 }
 
 function base64Utf8(value: string): string {

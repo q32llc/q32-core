@@ -102,6 +102,37 @@ export async function sendSesEmail(
   return { provider: "ses", messageId };
 }
 
+export async function sendSesRawEmail(
+  config: AwsConfig,
+  input: {
+    fromEmailAddress: string;
+    destination: string[];
+    rawMime: string;
+  },
+  options: SesSendOptions = {},
+): Promise<SesSendResult> {
+  const response = await awsFetch(config, `https://email.${config.region}.amazonaws.com/v2/email/outbound-emails`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      FromEmailAddress: input.fromEmailAddress,
+      Destination: {
+        ToAddresses: input.destination,
+      },
+      Content: {
+        Raw: {
+          Data: textToBase64(input.rawMime),
+        },
+      },
+    }),
+  }, { service: "ses", fetcher: options.fetcher });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`SES raw send failed: ${response.status} ${text.slice(0, 300)}`);
+  const payload = parseJsonObject(text);
+  const messageId = stringValue(payload.MessageId) ?? stringValue(payload.messageId) ?? "";
+  return { provider: "ses", messageId };
+}
+
 export async function sesQuery(
   config: AwsConfig,
   params: Record<string, string>,

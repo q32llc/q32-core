@@ -1,7 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAwsConfigFromEnv } from "../src/aws.js";
-import { buildListUnsubscribeHeaders, buildRawMimeMessage } from "../src/email.js";
-import { createSesMailerFromEnv, inboundSesMxHost, sendSesEmail } from "../src/ses.js";
+import {
+  buildListUnsubscribeHeaders,
+  buildRawMimeMessage,
+  buildResentMimeMessage,
+} from "../src/email.js";
+import {
+  createSesMailerFromEnv,
+  inboundSesMxHost,
+  sendSesEmail,
+  sendSesRawEmail,
+} from "../src/ses.js";
 import {
   confirmSnsSubscription,
   extractSesFeedbackRecipients,
@@ -57,6 +66,26 @@ describe("email MIME helpers", () => {
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     });
   });
+
+  it("builds transparent resent MIME without rewriting the original message", () => {
+    const mime = buildResentMimeMessage({
+      resentFrom: { email: "forwarder@example.com", name: "Forwarder" },
+      resentTo: [{ email: "dest@example.com" }],
+      resentDate: new Date("2026-07-07T12:00:00Z"),
+      resentMessageId: "<resent-1@example.com>",
+      rawMessage:
+        "From: Original <original@example.net>\nTo: alias@example.com\nSubject: Hello\n\nOriginal body.",
+    });
+
+    expect(mime).toContain("Resent-From: \"Forwarder\" <forwarder@example.com>\r\n");
+    expect(mime).toContain("Resent-To: dest@example.com\r\n");
+    expect(mime).toContain("Resent-Date: Tue, 07 Jul 2026 12:00:00 GMT\r\n");
+    expect(mime).toContain("Resent-Message-ID: <resent-1@example.com>\r\n");
+    expect(mime).toContain("From: Original <original@example.net>\r\n");
+    expect(mime).toContain("\r\n\r\nOriginal body.");
+    expect(mime).not.toContain("Fwd:");
+    expect(mime).not.toContain("message/rfc822");
+  });
 });
 
 describe("SES helpers", () => {
@@ -78,6 +107,29 @@ describe("SES helpers", () => {
       subject: "Subject",
       text: "Body",
     }, { fetcher })).resolves.toEqual({ provider: "ses", messageId: "msg_123" });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it("sends caller-provided raw MIME through SES v2 HTTP API", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.FromEmailAddress).toBe("forwarder@example.com");
+      expect(body.Destination.ToAddresses).toEqual(["dest@example.com"]);
+      expect(Buffer.from(body.Content.Raw.Data, "base64").toString("utf8")).toContain(
+        "Resent-From: forwarder@example.com",
+      );
+      return Response.json({ MessageId: "raw_123" });
+    });
+
+    await expect(sendSesRawEmail({
+      accessKeyId: "AKIDEXAMPLE",
+      secretAccessKey: "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
+      region: "us-east-1",
+    }, {
+      fromEmailAddress: "forwarder@example.com",
+      destination: ["dest@example.com"],
+      rawMime: "Resent-From: forwarder@example.com\r\nFrom: original@example.net\r\n\r\nBody",
+    }, { fetcher })).resolves.toEqual({ provider: "ses", messageId: "raw_123" });
     expect(fetcher).toHaveBeenCalledOnce();
   });
 
