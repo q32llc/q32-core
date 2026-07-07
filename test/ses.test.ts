@@ -133,6 +133,28 @@ describe("SES helpers", () => {
     expect(fetcher).toHaveBeenCalledOnce();
   });
 
+  it("can omit SES v2 FromEmailAddress for raw MIME display-name control", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.FromEmailAddress).toBeUndefined();
+      expect(body.Destination.ToAddresses).toEqual(["dest@example.com"]);
+      expect(Buffer.from(body.Content.Raw.Data, "base64").toString("utf8")).toContain(
+        "From: Display <verified@example.com>",
+      );
+      return Response.json({ MessageId: "raw_456" });
+    });
+
+    await expect(sendSesRawEmail({
+      accessKeyId: "AKIDEXAMPLE",
+      secretAccessKey: "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
+      region: "us-east-1",
+    }, {
+      destination: ["dest@example.com"],
+      rawMime: "From: Display <verified@example.com>\r\nTo: dest@example.com\r\n\r\nBody",
+    }, { fetcher })).resolves.toEqual({ provider: "ses", messageId: "raw_456" });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
   it("creates configured and noop mailers from env", () => {
     expect(createSesMailerFromEnv({}).enabled).toBe(false);
     expect(createSesMailerFromEnv({

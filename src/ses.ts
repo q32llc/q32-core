@@ -105,7 +105,7 @@ export async function sendSesEmail(
 export async function sendSesRawEmail(
   config: AwsConfig,
   input: {
-    fromEmailAddress: string;
+    fromEmailAddress?: string;
     destination: string[];
     rawMime: string;
   },
@@ -115,7 +115,7 @@ export async function sendSesRawEmail(
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      FromEmailAddress: input.fromEmailAddress,
+      ...(input.fromEmailAddress ? { FromEmailAddress: input.fromEmailAddress } : {}),
       Destination: {
         ToAddresses: input.destination,
       },
