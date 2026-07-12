@@ -8,6 +8,7 @@ The first release focuses on common infrastructure repeated across Q32 apps:
 - API operation registries
 - API/MCP discovery surfaces: OpenAPI docs, API catalogs, Agent Skills indexes, MCP manifests, and bearer challenges
 - framework-neutral auth/session/MCP auth services with thin Hono and React Router adapters
+- durable purchase-conversion outbox contracts and Google Ads click-conversion uploads
 - billing plan/status primitives
 - Cloudflare binding guards
 - environment parsing
@@ -67,6 +68,7 @@ import {
 ```
 
 See [docs/jobs.md](docs/jobs.md) for the shared jobs model.
+See [docs/conversion-outbox.md](docs/conversion-outbox.md) for the confirmed-purchase conversion contract.
 
 The root `@q32/core` export is kept dependency-light. Optional integrations that
 need peer packages should be imported from their subpaths, for example
