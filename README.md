@@ -1,38 +1,36 @@
 # @q32/core
 
-Shared TypeScript primitives for Q32 Cloudflare Worker projects.
-
-The first release focuses on common infrastructure repeated across Q32 apps:
-
-- AI provider contracts and JSON extraction helpers
-- API operation registries
-- API/MCP discovery surfaces: OpenAPI docs, API catalogs, Agent Skills indexes, MCP manifests, and bearer challenges
-- framework-neutral auth/session/MCP auth services with thin Hono and React Router adapters
-- durable purchase-conversion outbox contracts and Google Ads click-conversion uploads
-- billing plan/status primitives
-- Cloudflare binding guards
-- environment parsing
-- email provider contracts and address helpers
-- IDs, tokens, and signed session cookies
-- hash and HMAC helpers
-- HTTP JSON/error helpers
-- D1-like database types and migration runner
-- encoding helpers
-- durable D1-backed jobs, child orchestration, queue publishers, and pipeline managers
-- `ops_events`
-- Postgres migration helpers
-- R2 JSON artifacts
-- SEO sitemap, robots, and metadata helpers
-- test helpers for Worker queues, R2, and JSON responses
-- OAuth/MCP discovery metadata
-- D1 rate limiting
-- WebCrypto JSON encryption
+Dependency-light TypeScript building blocks shared by Q32 applications. The package targets Cloudflare Workers, Node, and tests, favors standard Web APIs, and keeps application policy in the consuming app.
 
 ## Install
 
 ```bash
 pnpm add @q32/core
 ```
+
+Import from the package root or use a subpath for a focused dependency surface:
+
+```ts
+import { createId, jsonResponse } from "@q32/core";
+import { D1JobStore } from "@q32/core/jobs";
+import { createKyselyPostgres } from "@q32/core/pg-kysely";
+```
+
+`pg-kysely` is the only optional integration with peer dependencies. All other modules use platform APIs and types.
+
+## What's included
+
+- **Application and HTTP:** [API operation registries and discovery documents](src/api.ts), [JSON responses and errors](src/http.ts), [environment parsing](src/env.ts), and [Cloudflare binding guards](src/cloudflare.ts)
+- **Identity and security:** [auth services](src/auth.ts), [Hono](src/hono.ts) and [React Router](src/react-router.ts) adapters, [signed sessions](src/session.ts), [IDs and tokens](src/ids.ts), [encoding](src/encoding.ts), and [WebCrypto encryption](src/crypto.ts)
+- **Agents and authorization:** [AI provider contracts and JSON extraction](src/ai.ts), [MCP metadata](src/mcp.ts), and [OAuth discovery and protected-resource metadata](src/oauth.ts)
+- **Data and durable work:** [D1 types and migrations](src/d1.ts), [durable jobs and orchestration](src/jobs.ts), [operational events](src/ops-events.ts), [D1 rate limiting](src/rate-limit.ts), [R2 JSON storage](src/r2-json.ts), and [time helpers](src/time.ts)
+- **Postgres:** [migration helpers](src/pg.ts) and the optional [Kysely/Postgres integration](src/pg-kysely.ts)
+- **Messaging and commerce:** [email contracts and addresses](src/email.ts), [AWS request signing](src/aws.ts), [Amazon SES](src/ses.ts) and [SES/SNS webhooks](src/ses-sns.ts), [billing primitives](src/billing.ts), [conversion outbox contracts](src/conversion-outbox.ts), and [Google Ads uploads](src/google-ads.ts)
+- **Presentation and tests:** [SEO metadata, sitemaps, and robots](src/seo.ts) and [Worker queue, R2, and response test helpers](src/testing.ts)
+
+See [Durable jobs](docs/jobs.md) and [Purchase conversion outbox](docs/conversion-outbox.md) for the two larger workflows.
+
+Framework adapters are intentionally thin: put policy and persistence in shared services, then use an adapter only to translate framework request and response shapes.
 
 ## Development
 
@@ -44,36 +42,4 @@ pnpm build
 
 ## Release
 
-Publishing is handled by the `Release` GitHub Actions workflow when a GitHub release is published. npm trusted publishing is configured for `q32llc/q32-core` using `.github/workflows/release.yml`, so the workflow publishes with provenance through GitHub OIDC.
-
-## Modules
-
-```ts
-import {
-  D1JobStore,
-  D1_JOBS_SCHEMA,
-  appUrl,
-  createAuthSystem,
-  createId,
-  apiCatalogLinkset,
-  honoAuthMiddleware,
-  jsonResponse,
-  mcpManifest,
-  oauthAuthorizationServerMetadata,
-  reactRouterAuthContext,
-  renderSitemapXml,
-  recordOpsEvent,
-  signSession,
-} from "@q32/core";
-```
-
-See [docs/jobs.md](docs/jobs.md) for the shared jobs model.
-See [docs/conversion-outbox.md](docs/conversion-outbox.md) for the confirmed-purchase conversion contract.
-
-The root `@q32/core` export is kept dependency-light. Optional integrations that
-need peer packages should be imported from their subpaths, for example
-`@q32/core/pg-kysely` for Kysely/Postgres helpers.
-
-Framework adapters are deliberately thin. Put policy and persistence in `auth`,
-`jobs`, `ops-events`, and `api`; use `hono` or `react-router` only to translate a
-framework request/response shape into those shared services.
+Publishing runs through the [Release workflow](.github/workflows/release.yml) when a GitHub release is published, using npm trusted publishing and provenance through GitHub OIDC.
