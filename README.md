@@ -26,9 +26,9 @@ import { createKyselyPostgres } from "@q32/core/pg-kysely";
 - **Data and durable work:** [D1 types and migrations](src/d1.ts), [durable jobs and orchestration](src/jobs.ts), [operational events](src/ops-events.ts), [D1 rate limiting](src/rate-limit.ts), [R2 JSON storage](src/r2-json.ts), and [time helpers](src/time.ts)
 - **Postgres:** [migration helpers](src/pg.ts) and the optional [Kysely/Postgres integration](src/pg-kysely.ts)
 - **Messaging and commerce:** [email contracts and addresses](src/email.ts), [AWS request signing](src/aws.ts), [Amazon SES](src/ses.ts) and [SES/SNS webhooks](src/ses-sns.ts), [billing primitives](src/billing.ts), [conversion outbox contracts](src/conversion-outbox.ts), and [Google Ads uploads](src/google-ads.ts)
-- **Presentation and tests:** [SEO metadata, sitemaps, and robots](src/seo.ts) and [Worker queue, R2, and response test helpers](src/testing.ts)
+- **Presentation and tests:** [SEO and social metadata, JSON-LD, sitemaps, and robots](src/seo.ts) and [Worker queue, R2, and response test helpers](src/testing.ts)
 
-See [Durable jobs](docs/jobs.md) and [Purchase conversion outbox](docs/conversion-outbox.md) for the two larger workflows.
+See [Durable jobs](docs/jobs.md), [Purchase conversion outbox](docs/conversion-outbox.md), and [SEO primitives](docs/seo.md) for larger workflow guidance.
 
 Framework adapters are intentionally thin: put policy and persistence in shared services, then use an adapter only to translate framework request and response shapes.
 
