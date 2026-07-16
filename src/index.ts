@@ -17,6 +17,7 @@ export * from "./ids.js";
 export * from "./jobs.js";
 export * from "./mcp.js";
 export * from "./oauth.js";
+export * from "./password.js";
 export * from "./ops-events.js";
 export * from "./pg.js";
 export * from "./r2-json.js";
