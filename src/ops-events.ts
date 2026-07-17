@@ -374,6 +374,9 @@ export const JOB_AWARE_D1_OPS_EVENT_COLUMNS: OpsEventColumn[] = [
   { column: "error_message", value: "errorMessage" },
   { column: "payload_json", value: "payloadJson" },
   { column: "metrics_json", value: "metricsJson" },
+  { column: "severity", value: "severity" },
+  { column: "source", value: "workflow" },
+  { column: "fingerprint", value: "fingerprint" },
   { column: "created_at", value: "occurredAt" },
 ];
 
@@ -475,6 +478,9 @@ CREATE TABLE IF NOT EXISTS ops_events (
   error_message TEXT,
   payload_json TEXT NOT NULL DEFAULT '{}',
   metrics_json TEXT NOT NULL DEFAULT '{}',
+  severity TEXT NOT NULL DEFAULT 'info',
+  source TEXT NOT NULL,
+  fingerprint TEXT,
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ops_events_created_at_idx ON ops_events(created_at DESC);
