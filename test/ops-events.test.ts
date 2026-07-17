@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   REQUEST_JOB_OPS_EVENT_COLUMNS,
+  JOB_AWARE_D1_OPS_EVENT_COLUMNS,
   buildOpsEventInsert,
+  listJobAwareD1OpsEvents,
   RUN_SCOPED_OPS_EVENT_COLUMNS,
   GRAPH_SCOPE_EVENT_COLUMNS,
   normalizeOpsEvent,
   recordD1OpsEvent,
+  recordJobAwareD1OpsEvent,
   OPERATIONAL_EVENT_COLUMNS,
 } from "../src/ops-events.js";
 import type { D1DatabaseLike, D1PreparedStatementLike, D1StatementResult } from "../src/d1.js";
@@ -266,6 +269,72 @@ describe("ops event helpers", () => {
     expect(db.lastValues.at(-1)).toBe("ops_parent");
   });
 
+  it("records the indexed durable-job and operator fields", async () => {
+    const db = new MemoryD1();
+    await recordJobAwareD1OpsEvent(db, {
+      eventId: "ops_job_1",
+      eventName: "job.failed",
+      workflow: "jobs",
+      status: "error",
+      jobId: "job_1",
+      orgId: "team_1",
+      siteId: "brand_1",
+      provider: "example",
+      targetType: "job",
+      targetId: "job_1",
+      actorId: "operator_1",
+      errorMessage: "provider timeout",
+      metadata: { attempt: 3 },
+      metrics: { durationMs: 1200 },
+      occurredAt: "2026-07-16T12:00:00.000Z",
+    });
+
+    expect(db.lastQuery).toContain('"site_id"');
+    expect(db.lastValues).toHaveLength(JOB_AWARE_D1_OPS_EVENT_COLUMNS.length);
+    expect(db.lastValues.slice(0, 6)).toEqual(["ops_job_1", "job_1", "error", "job.failed", "jobs", "provider timeout"]);
+    expect(db.lastValues).toContain("team_1");
+    expect(db.lastValues).toContain("brand_1");
+  });
+
+  it("builds a bounded indexed job-aware event query", async () => {
+    const db = new MemoryD1();
+    db.allResults = [
+      {
+        opsEventId: "ops_1",
+        jobId: "job_1",
+        level: "warn",
+        eventType: "job.retrying",
+        workflow: "jobs",
+        message: "Retrying",
+        metadataJson: "{}",
+        orgId: "team_1",
+        siteId: "brand_1",
+        provider: null,
+        sourceId: null,
+        targetType: "job",
+        targetId: "job_1",
+        status: "warning",
+        durationMs: null,
+        actorId: null,
+        errorMessage: null,
+        payloadJson: "{}",
+        metricsJson: "{}",
+        createdAt: "2026-07-16T12:00:00.000Z",
+      },
+    ];
+    const rows = await listJobAwareD1OpsEvents(db, {
+      level: "warn",
+      jobId: " job_1 ",
+      orgId: "team_1",
+      since: "2026-07-01T00:00:00.000Z",
+      limit: 999,
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(db.lastQuery).toContain("level = ? AND job_id = ? AND org_id = ? AND created_at >= ?");
+    expect(db.lastValues).toEqual(["warn", "job_1", "team_1", "2026-07-01T00:00:00.000Z", 200]);
+  });
+
   it("rejects unsafe table names", () => {
     expect(() =>
       buildOpsEventInsert(
@@ -303,6 +372,7 @@ describe("ops event helpers", () => {
 class MemoryD1 implements D1DatabaseLike {
   lastQuery = "";
   lastValues: unknown[] = [];
+  allResults: unknown[] = [];
 
   prepare(query: string): D1PreparedStatementLike {
     this.lastQuery = query;
@@ -313,7 +383,7 @@ class MemoryD1 implements D1DatabaseLike {
       },
       run: async (): Promise<D1StatementResult> => ({ success: true, meta: {} }),
       first: async () => null,
-      all: async () => ({ results: [] }),
+      all: async <T>() => ({ results: this.allResults as T[] }),
     };
     return statement;
   }

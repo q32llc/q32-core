@@ -22,6 +22,7 @@ export type OpsEventInput = {
   destinationId?: string | null;
   actorId?: string | null;
   orgId?: string | null;
+  siteId?: string | null;
   customerId?: string | null;
   provider?: string | null;
   targetType?: string | null;
@@ -55,6 +56,7 @@ export type NormalizedOpsEvent = {
   destinationId: string | null;
   actorId: string | null;
   orgId: string | null;
+  siteId: string | null;
   customerId: string | null;
   provider: string | null;
   targetType: string | null;
@@ -128,6 +130,7 @@ export function normalizeOpsEvent(
     destinationId: input.destinationId ?? null,
     actorId: input.actorId ?? null,
     orgId: input.orgId ?? null,
+    siteId: input.siteId ?? null,
     customerId: input.customerId ?? null,
     provider: input.provider ?? null,
     targetType: input.targetType ?? null,
@@ -212,6 +215,99 @@ export async function recordOpsEvent(db: D1DatabaseLike, input: OpsEventInput): 
   await recordD1OpsEvent(db, input);
 }
 
+export async function recordJobAwareD1OpsEvent(db: D1DatabaseLike, input: OpsEventInput): Promise<NormalizedOpsEvent> {
+  return await recordD1OpsEvent(db, input, { columns: JOB_AWARE_D1_OPS_EVENT_COLUMNS });
+}
+
+export type JobAwareD1OpsEventRow = {
+  opsEventId: string;
+  jobId: string | null;
+  level: OpsEventSeverity;
+  eventType: string;
+  workflow: string;
+  message: string;
+  metadataJson: string;
+  orgId: string | null;
+  siteId: string | null;
+  provider: string | null;
+  sourceId: string | null;
+  targetType: string | null;
+  targetId: string | null;
+  status: string;
+  durationMs: number | null;
+  actorId: string | null;
+  errorMessage: string | null;
+  payloadJson: string;
+  metricsJson: string;
+  createdAt: string;
+};
+
+export type JobAwareD1OpsEventFilters = {
+  level?: OpsEventSeverity | null;
+  eventType?: string | null;
+  workflow?: string | null;
+  jobId?: string | null;
+  orgId?: string | null;
+  siteId?: string | null;
+  provider?: string | null;
+  sourceId?: string | null;
+  targetType?: string | null;
+  targetId?: string | null;
+  status?: string | null;
+  since?: string | null;
+  until?: string | null;
+  limit?: number;
+};
+
+export async function listJobAwareD1OpsEvents(
+  db: D1DatabaseLike,
+  filters: JobAwareD1OpsEventFilters = {},
+): Promise<JobAwareD1OpsEventRow[]> {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+  for (const [column, value] of [
+    ["level", filters.level],
+    ["event_type", filters.eventType],
+    ["workflow", filters.workflow],
+    ["job_id", filters.jobId],
+    ["org_id", filters.orgId],
+    ["site_id", filters.siteId],
+    ["provider", filters.provider],
+    ["source_id", filters.sourceId],
+    ["target_type", filters.targetType],
+    ["target_id", filters.targetId],
+    ["status", filters.status],
+  ] as const) {
+    if (value?.trim()) {
+      conditions.push(`${column} = ?`);
+      values.push(value.trim());
+    }
+  }
+  if (filters.since?.trim()) {
+    conditions.push("created_at >= ?");
+    values.push(filters.since.trim());
+  }
+  if (filters.until?.trim()) {
+    conditions.push("created_at <= ?");
+    values.push(filters.until.trim());
+  }
+  const limit = Math.max(1, Math.min(200, Math.floor(filters.limit ?? 100)));
+  values.push(limit);
+  const rows = await db
+    .prepare(
+      `SELECT ops_event_id AS opsEventId, job_id AS jobId, level, event_type AS eventType, workflow,
+              message, metadata_json AS metadataJson, org_id AS orgId, site_id AS siteId, provider,
+              source_id AS sourceId, target_type AS targetType, target_id AS targetId, status,
+              duration_ms AS durationMs, actor_id AS actorId, error_message AS errorMessage,
+              payload_json AS payloadJson, metrics_json AS metricsJson, created_at AS createdAt
+       FROM ops_events${conditions.length ? ` WHERE ${conditions.join(" AND ")}` : ""}
+       ORDER BY created_at DESC, id DESC LIMIT ?`,
+    )
+    .bind(...(values as never[]))
+    .all<JobAwareD1OpsEventRow>();
+  return rows.results ?? [];
+}
+
 export type OpsEventRow = {
   id: number;
   event_type: string;
@@ -256,6 +352,29 @@ export const DEFAULT_D1_OPS_EVENT_COLUMNS: OpsEventColumn[] = [
   { column: "source", value: "workflow" },
   { column: "fingerprint", value: "fingerprint" },
   { column: "payload_json", value: "payloadJson" },
+];
+
+export const JOB_AWARE_D1_OPS_EVENT_COLUMNS: OpsEventColumn[] = [
+  { column: "ops_event_id", value: "eventId" },
+  { column: "job_id", value: "jobId" },
+  { column: "level", value: "severity" },
+  { column: "event_type", value: "eventName" },
+  { column: "workflow", value: "workflow" },
+  { column: "message", value: (event) => event.message ?? event.errorMessage ?? event.eventName },
+  { column: "metadata_json", value: "metadataJson" },
+  { column: "org_id", value: "orgId" },
+  { column: "site_id", value: "siteId" },
+  { column: "provider", value: "provider" },
+  { column: "source_id", value: "sourceId" },
+  { column: "target_type", value: "targetType" },
+  { column: "target_id", value: "targetId" },
+  { column: "status", value: "status" },
+  { column: "duration_ms", value: "durationMs" },
+  { column: "actor_id", value: "actorId" },
+  { column: "error_message", value: "errorMessage" },
+  { column: "payload_json", value: "payloadJson" },
+  { column: "metrics_json", value: "metricsJson" },
+  { column: "created_at", value: "occurredAt" },
 ];
 
 export const GRAPH_SCOPE_EVENT_COLUMNS: OpsEventColumn[] = [
@@ -332,6 +451,40 @@ CREATE TABLE IF NOT EXISTS ops_events (
 CREATE INDEX IF NOT EXISTS ops_events_created_at_idx ON ops_events(created_at DESC);
 CREATE INDEX IF NOT EXISTS ops_events_type_created_idx ON ops_events(event_type, created_at DESC);
 CREATE INDEX IF NOT EXISTS ops_events_severity_created_idx ON ops_events(severity, created_at DESC);
+`;
+
+export const D1_JOB_AWARE_OPS_EVENTS_SCHEMA = `
+CREATE TABLE IF NOT EXISTS ops_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ops_event_id TEXT NOT NULL UNIQUE,
+  job_id TEXT,
+  level TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  workflow TEXT NOT NULL,
+  message TEXT NOT NULL,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  org_id TEXT,
+  site_id TEXT,
+  provider TEXT,
+  source_id TEXT,
+  target_type TEXT,
+  target_id TEXT,
+  status TEXT NOT NULL,
+  duration_ms INTEGER,
+  actor_id TEXT,
+  error_message TEXT,
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  metrics_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ops_events_created_at_idx ON ops_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS ops_events_type_created_idx ON ops_events(event_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS ops_events_level_created_idx ON ops_events(level, created_at DESC);
+CREATE INDEX IF NOT EXISTS ops_events_job_created_idx ON ops_events(job_id, created_at) WHERE job_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ops_events_org_created_idx ON ops_events(org_id, created_at DESC) WHERE org_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ops_events_site_created_idx ON ops_events(site_id, created_at DESC) WHERE site_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ops_events_provider_created_idx ON ops_events(provider, created_at DESC) WHERE provider IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ops_events_target_created_idx ON ops_events(target_type, target_id, created_at DESC);
 `;
 
 function valueForColumn(event: NormalizedOpsEvent, column: OpsEventColumn): unknown {
