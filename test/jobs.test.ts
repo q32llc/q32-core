@@ -126,6 +126,32 @@ describe("D1JobStore", () => {
     expect(await store.requestStopActiveChildren(activeParent.jobId)).toBe(1);
     await expect(store.summarizeChildren(activeParent.jobId)).resolves.toMatchObject({ stopping: 1, active: 1 });
   });
+
+  it("lists jobs for operators and safely retries or releases eligible work", async () => {
+    const db = new MemoryJobDb();
+    const store = new D1JobStore(db, { staleRunningAfterSeconds: 60 });
+    const failed = await store.enqueue({ jobType: "sync", orgId: "org_1", siteId: "site_1", maxAttempts: 1 });
+    await expect(
+      store.run(failed.jobId, async () => {
+        throw new Error("provider failed");
+      }),
+    ).rejects.toThrow("provider failed");
+
+    await expect(store.retryFailed(failed.jobId)).resolves.toBe(true);
+    await expect(store.get(failed.jobId)).resolves.toMatchObject({ status: "queued", maxAttempts: 2, lastError: null });
+    await expect(store.retryFailed(failed.jobId)).resolves.toBe(false);
+    await expect(store.listJobs({ status: "queued", orgId: "org_1", siteId: "site_1", limit: 999 })).resolves.toEqual([
+      expect.objectContaining({ jobId: failed.jobId }),
+    ]);
+
+    const stale = await store.enqueue({ jobType: "stale", orgId: "org_2" });
+    const staleRow = db.rows.get(stale.jobId)!;
+    staleRow.status = "running";
+    staleRow.updatedAt = "2026-07-16T11:00:00.000Z";
+    await expect(store.releaseStale(stale.jobId, new Date("2026-07-16T12:00:00.000Z"))).resolves.toBe(true);
+    await expect(store.get(stale.jobId)).resolves.toMatchObject({ status: "queued", startedAt: null });
+    await expect(store.releaseStale(stale.jobId, new Date("2026-07-16T12:00:00.000Z"))).resolves.toBe(false);
+  });
 });
 
 class MemoryJobDb implements D1DatabaseLike {
@@ -200,6 +226,31 @@ class MemoryStatement implements D1PreparedStatementLike {
         createdAt: String(createdAt),
         updatedAt: String(updatedAt),
       });
+      return changed(1);
+    }
+    if (q.includes("max_attempts = case")) {
+      const [updatedAt, jobId] = this.bindings;
+      const row = this.db.rows.get(String(jobId));
+      if (!row || row.status !== "failed") return changed(0);
+      row.status = "queued";
+      row.result = null;
+      row.availableAt = null;
+      row.completedAt = null;
+      row.lastError = null;
+      row.maxAttempts = row.attemptCount >= row.maxAttempts ? row.attemptCount + 1 : row.maxAttempts;
+      row.updatedAt = String(updatedAt);
+      return changed(1);
+    }
+    if (q.includes("released after an operator confirmed a stale lease")) {
+      const [updatedAt, jobId, cutoff] = this.bindings;
+      const row = this.db.rows.get(String(jobId));
+      if (!row || !["running", "stopping"].includes(row.status) || row.updatedAt > String(cutoff)) return changed(0);
+      row.status = "queued";
+      row.availableAt = null;
+      row.startedAt = null;
+      row.completedAt = null;
+      row.lastError = "Released after an operator confirmed a stale lease.";
+      row.updatedAt = String(updatedAt);
       return changed(1);
     }
     if (q.includes("set status = 'running'")) {
@@ -318,7 +369,26 @@ class MemoryStatement implements D1PreparedStatementLike {
           .map((row) => toDbRow(row) as T),
       };
     }
-    return { results: [...this.db.rows.values()].map((row) => toDbRow(row) as T) };
+    let rows = [...this.db.rows.values()];
+    if (q.includes("order by created_at desc limit ?")) {
+      let index = 0;
+      for (const [fragment, field] of [
+        ["status = ?", "status"],
+        ["job_type = ?", "jobType"],
+        ["org_id = ?", "orgId"],
+        ["site_id = ?", "siteId"],
+        ["parent_job_id = ?", "parentJobId"],
+      ] as const) {
+        if (!q.includes(fragment)) continue;
+        const value = this.bindings[index++];
+        rows = rows.filter((row) => row[field] === value);
+      }
+      if (q.includes("created_at >= ?")) rows = rows.filter((row) => row.createdAt >= String(this.bindings[index++]));
+      if (q.includes("created_at <= ?")) rows = rows.filter((row) => row.createdAt <= String(this.bindings[index++]));
+      const limit = Number(this.bindings.at(-1));
+      rows = rows.sort((left, right) => right.createdAt.localeCompare(left.createdAt)).slice(0, limit);
+    }
+    return { results: rows.map((row) => toDbRow(row) as T) };
   }
 }
 

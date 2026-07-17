@@ -36,6 +36,17 @@ export type JobRecord<TPayload = unknown, TResult = unknown> = {
   updatedAt: string;
 };
 
+export type JobListFilters = {
+  status?: JobStatus | null;
+  jobType?: string | null;
+  orgId?: string | null;
+  siteId?: string | null;
+  parentJobId?: string | null;
+  createdAfter?: string | null;
+  createdBefore?: string | null;
+  limit?: number;
+};
+
 export type EnqueueJobInput<TPayload = unknown> = {
   jobType: string;
   payload?: TPayload;
@@ -473,6 +484,40 @@ export class D1JobStore implements DurableJobRepository {
     return (rows.results ?? []).map(rowToJob);
   }
 
+  async listJobs(filters: JobListFilters = {}): Promise<JobRecord[]> {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    for (const [column, value] of [
+      ["status", filters.status],
+      ["job_type", filters.jobType],
+      ["org_id", filters.orgId],
+      ["site_id", filters.siteId],
+      ["parent_job_id", filters.parentJobId],
+    ] as const) {
+      if (value?.trim()) {
+        conditions.push(`${column} = ?`);
+        values.push(value.trim());
+      }
+    }
+    if (filters.createdAfter?.trim()) {
+      conditions.push("created_at >= ?");
+      values.push(filters.createdAfter.trim());
+    }
+    if (filters.createdBefore?.trim()) {
+      conditions.push("created_at <= ?");
+      values.push(filters.createdBefore.trim());
+    }
+    values.push(Math.max(1, Math.min(200, Math.floor(filters.limit ?? 100))));
+    const rows = await this.db
+      .prepare(
+        `${this.selectSql()}${conditions.length ? ` WHERE ${conditions.join(" AND ")}` : ""}
+         ORDER BY created_at DESC LIMIT ?`,
+      )
+      .bind(...(values as never[]))
+      .all<JobRow>();
+    return (rows.results ?? []).map(rowToJob);
+  }
+
   async getLatestForSite(input: { siteId: string; jobType?: string | null }): Promise<JobRecord | null> {
     const row = await this.db
       .prepare(
@@ -666,6 +711,47 @@ export class D1JobStore implements DurableJobRepository {
       .run();
     const job = await this.get(jobId);
     if (job) await this.emitStatusEvent(job, job.status, "Job stop requested.");
+  }
+
+  async retryFailed(jobId: string): Promise<boolean> {
+    const now = nowIso();
+    const result = await this.db
+      .prepare(
+        `UPDATE ${this.tableName}
+         SET status = 'queued', result_json = NULL, available_at = NULL, completed_at = NULL,
+             last_error = NULL, max_attempts = CASE WHEN attempt_count >= max_attempts THEN attempt_count + 1 ELSE max_attempts END,
+             updated_at = ?
+         WHERE job_id = ? AND status = 'failed'`,
+      )
+      .bind(now, jobId)
+      .run();
+    const changed = Number(result.meta.changes ?? 0) === 1;
+    if (changed) {
+      const job = await this.get(jobId);
+      if (job) await this.emitStatusEvent(job, "queued", "Failed job queued for an operator retry.");
+    }
+    return changed;
+  }
+
+  async releaseStale(jobId: string, now = new Date()): Promise<boolean> {
+    const threshold = Math.max(1, this.options.staleRunningAfterSeconds ?? 15 * 60);
+    const nowValue = now.toISOString();
+    const cutoff = new Date(now.getTime() - threshold * 1000).toISOString();
+    const result = await this.db
+      .prepare(
+        `UPDATE ${this.tableName}
+         SET status = 'queued', available_at = NULL, started_at = NULL, completed_at = NULL,
+             last_error = 'Released after an operator confirmed a stale lease.', updated_at = ?
+         WHERE job_id = ? AND status IN ('running', 'stopping') AND updated_at <= ?`,
+      )
+      .bind(nowValue, jobId, cutoff)
+      .run();
+    const changed = Number(result.meta.changes ?? 0) === 1;
+    if (changed) {
+      const job = await this.get(jobId);
+      if (job) await this.emitStatusEvent(job, "queued", "Stale job lease released by an operator.");
+    }
+    return changed;
   }
 
   async listChildren(parentJobId: string): Promise<JobRecord[]> {
