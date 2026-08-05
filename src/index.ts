@@ -15,6 +15,7 @@ export * from "./google-ads.js";
 export * from "./http.js";
 export * from "./ids.js";
 export * from "./jobs.js";
+export * from "./magic-link.js";
 export * from "./mcp.js";
 export * from "./oauth.js";
 export * from "./password.js";

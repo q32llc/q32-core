@@ -21,7 +21,7 @@ import { createKyselyPostgres } from "@q32/core/pg-kysely";
 ## What's included
 
 - **Application and HTTP:** [API operation registries and discovery documents](src/api.ts), [JSON responses and errors](src/http.ts), [environment parsing](src/env.ts), and [Cloudflare binding guards](src/cloudflare.ts)
-- **Identity and security:** [auth services](src/auth.ts), [Hono](src/hono.ts) and [React Router](src/react-router.ts) adapters, [signed sessions](src/session.ts), [IDs and tokens](src/ids.ts), [encoding](src/encoding.ts), and [WebCrypto encryption](src/crypto.ts)
+- **Identity and security:** [auth services](src/auth.ts), [scanner-safe magic-link confirmations](src/magic-link.ts), [Hono](src/hono.ts) and [React Router](src/react-router.ts) adapters, [signed sessions](src/session.ts), [IDs and tokens](src/ids.ts), [encoding](src/encoding.ts), and [WebCrypto encryption](src/crypto.ts)
 - **Agents and authorization:** [AI provider contracts and JSON extraction](src/ai.ts), [MCP metadata](src/mcp.ts), and [OAuth discovery and protected-resource metadata](src/oauth.ts)
 - **Data and durable work:** [D1 types and migrations](src/d1.ts), [durable jobs and orchestration](src/jobs.ts), [operational events](src/ops-events.ts), [D1 rate limiting](src/rate-limit.ts), [R2 JSON storage](src/r2-json.ts), and [time helpers](src/time.ts)
 - **Postgres:** [migration helpers](src/pg.ts) and the optional [Kysely/Postgres integration](src/pg-kysely.ts)

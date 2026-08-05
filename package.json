@@ -1,6 +1,6 @@
 {
   "name": "@q32/core",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Shared TypeScript primitives for Q32 Cloudflare Worker projects.",
   "license": "MIT",
   "type": "module",
@@ -92,6 +92,10 @@
     "./jobs": {
       "types": "./dist/jobs.d.ts",
       "default": "./dist/jobs.js"
+    },
+    "./magic-link": {
+      "types": "./dist/magic-link.d.ts",
+      "default": "./dist/magic-link.js"
     },
     "./mcp": {
       "types": "./dist/mcp.d.ts",
